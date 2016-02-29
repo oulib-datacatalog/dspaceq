@@ -1,4 +1,4 @@
-ETAG q
+Cybercom Queue
 ====
 
-Various asynchronous tasks for the ETAG 
+Example Cybercom task queue. Good starting repo for various asynchronous tasks. 
