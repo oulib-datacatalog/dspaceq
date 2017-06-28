@@ -66,7 +66,7 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
         dspace_cmd=cmd_tmpl.format("add",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
         if dspace_ingest:
             _dspace_command(dspace_cmd)
-        result_tmpl.append("SAF's generated {0}".format(stageDir)
+        result_tmpl.append("SAF's generated {0}".format(stageDir))
     if df_meta:
         result_tmpl.append("Update Wiki need to code")
 
