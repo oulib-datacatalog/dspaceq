@@ -1,4 +1,4 @@
-Cybercom Queue
+DSPACE Queue
 ====
 
-Example Cybercom task queue. Good starting repo for various asynchronous tasks. 
+DSPACE tasks for automation of loading content into DSPACE 5.x and 6.x  
