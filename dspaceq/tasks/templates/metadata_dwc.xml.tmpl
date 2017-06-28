@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<dublin_core schema="dwc">
+{% for key, value in dict_item.items() -%}
+<dcvalue element="npdg" qualifier="{{key}}" language="">{{ value }}</dcvalue>
+{% endfor -%}
+</dublin_core>

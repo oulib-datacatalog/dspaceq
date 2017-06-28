@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<dublin_core schema="dc">
+{% if uri is defined -%}
+<dcvalue element="identifier" qualifier="uri">{{ uri }}</dcvalue>
+<dcvalue element="relation" qualifier="wiki" language="">{{ wiki }}</dcvalue>
+{% endif -%}
+</dublin_core>
