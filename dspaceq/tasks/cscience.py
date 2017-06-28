@@ -2,7 +2,7 @@ from celery.task import task
 import os,json,requests, zipfile, StringIO
 from  glob import iglob
 import pandas as pd
-from cscience_saf import _saf_builder, mkdir_p
+from cscience_saf import _saf_builder, mkdir_p,uniquify
 
 def _dspace_command(cmd):
     try:
@@ -48,12 +48,23 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
 
     if df_data:
         # Existing items
-        existing_item = pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID')[cs_data.columns]
-        existing_item.columns=[s.split('[')[0].replace(".","_") for s in cs_data.columns]
+        existing_item = pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID')
+        existing_item.columns=[s.strip().replace('# of isolates from ','').split('[')[0].replace(".","_").replace(" ","_").lower() for s in existing_item.columns]
+        existing_item =existing_item.replace(np.nan, '', regex=True)
+        existing_item.columns = list(uniquify(existing_item.columns))
+
+        #existing_item = pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID')[cs_data.columns]
+        #existing_item.columns=[s.split('[')[0].replace(".","_") for s in cs_data.columns]
         # New Items
         temp=pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID',how='left')
-        temp =temp[pd.isnull(temp["dwc.npdg.sampleid[]"])]
+        temp =temp[pd.isnull(temp["dwc.npdg.sampleid[]"])] 
         new_item= temp[df_data.columns]
+        new_item.columns=[s.strip().replace('# of isolates from ','').replace(" ","_").lower() for s in df_data.columns]
+        new_item =new_item.replace(np.nan, '', regex=True)
+        new_item.columns = list(uniquify(new_item.columns))
+        #temp=pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID',how='left')
+        #temp =temp[pd.isnull(temp["dwc.npdg.sampleid[]"])]
+        #new_item= temp[df_data.columns]
 
         #make saf
         cmd_tmpl = "import --{0} --eperson={1} --collection={2} --source={3} --mapfile={4}"
