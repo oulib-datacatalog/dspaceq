@@ -1,15 +1,8 @@
 from celery.task import task
-from configparser import ConfigParser
-#import ConfigParser
 import os,json,requests, zipfile, StringIO
 from  glob import iglob
 import pandas as pd
 from cscience_saf import _saf_builder, mkdir_p
-
-def _get_config_parameter(group,param,config_file="cybercom.cfg"):
-    config = ConfigParser() #ConfigParser.ConfigParser()
-    config.read(config_file)
-    return config.get(group,param)
 
 def _dspace_command(cmd):
     try:
@@ -18,6 +11,8 @@ def _dspace_command(cmd):
         raise Exception(e.output)
 
 def _get_metadata(stageDir):
+    df_meta=None
+    df_data=None
     for filename in iglob("{0}/*.xlsx".format(stageDir)):
         df = pd.read_excel(filename)
         columns= [x.lower() for x in df.columns]
@@ -26,7 +21,7 @@ def _get_metadata(stageDir):
         else:
             df_data = df
     if df_meta is None and df_data is None:
-        raise Exception("excel files could not be loaded")
+        raise Exception("Excel files could not be located.")
     return df_meta,df_data
 
 

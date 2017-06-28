@@ -10,6 +10,7 @@ setup(name='dspaceq',
           'pymongo==3.2.1',
           'requests==2.9.1',
           'pandas',
+          'jinja2',
       ],
       include_package_data=True,
 )
