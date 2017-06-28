@@ -2,10 +2,14 @@
 import jinja2
 import requests
 import errno
-from configparser import ConfigParser
+#from configparser import ConfigParser
 import os,json
 import pandas as pd
 from shutil import copyfile
+try:
+    from configparser import ConfigParser
+except:
+    from ConfigParser import ConfigParser
 
 states=None
 template_path = os.path.dirname(os.path.realpath(__file__))
