@@ -45,8 +45,8 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
     #Load dspace CS data into dataframe
     cs_data= pd.read_csv("{0}/cs_data.csv".format(stageDir))
     result_tmpl =[]
-    if df_data:
 
+    if df_data:
         # Existing items
         existing_item = pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID')[cs_data.columns]
         existing_item.columns=[s.split('[')[0].replace(".","_") for s in cs_data.columns]
