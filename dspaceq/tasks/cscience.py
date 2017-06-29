@@ -33,7 +33,7 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
     os.makedirs(stageDir)
 
     # get zip file and store it localy to destination path
-    r = requests.get(dropbox_zip_uri.replace("dl=0","dl=1"), stream=True)
+    r = requests.get(dropbox_data_url.replace("dl=0","dl=1"), stream=True)
     z = zipfile.ZipFile(StringIO.StringIO(r.content))
     z.extractall(stageDir)
     #get excel file from dropbox
