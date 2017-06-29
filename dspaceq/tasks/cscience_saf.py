@@ -10,7 +10,7 @@ try:
     from configparser import ConfigParser
 except:
     from ConfigParser import ConfigParser
-
+host_name = "test.shareok.org"
 states=None
 template_path = os.path.dirname(os.path.realpath(__file__))
 #template_path = "/Users/mstacy/github/oulib-datacatalog/cscienceq/cscienceq/tasks"
@@ -38,15 +38,15 @@ def uniquify(df_columns):
         seen.add(newitem)
 
 def _get_image_shareok(safDir,dspace_id,sample_id):
-    url = "https://shareok.org/rest/items/{0}/bitstreams".format(dspace_id)
-    print(url)
+    url = "https://{0}/rest/items/{1}/bitstreams".format(host_name,dspace_id)
+    #print(url)
     data=requests.get(url,headers=headers).json()
     data = pd.DataFrame(data)
     files=[]
     for itm in data.itertuples():
         if itm.bundleName == 'ORIGINAL':
             files.append(itm.name)
-            r= requests.get("https://shareok.org{0}".format(itm.link),stream=True)
+            r= requests.get("https://{0}{1}".format(host_name,itm.link),stream=True)
             with open(os.path.join(safDir,itm.name), 'wb') as fd:
                 for chunk in r.iter_content(chunk_size=128):
                     fd.write(chunk)
