@@ -3,11 +3,12 @@ import os,json,requests, zipfile, StringIO
 from  glob import iglob
 import pandas as pd
 from cscience_saf import _saf_builder, mkdir_p,uniquify
+from subprocess import CalledProcessError , check_output
 
 def _dspace_command(cmd):
     try:
         check_output(['sudo','-u tomcat','/srv/shareok/dspace/bin/dspace',cmd])
-    except subprocess.CalledProcessError as e:
+    except CalledProcessError as e:
         raise Exception(e.output)
 
 def _get_metadata(stageDir):
