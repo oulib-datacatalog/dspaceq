@@ -32,6 +32,9 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
     task_id = str(ingest_cscience_data.request.id)
     stageDir = os.path.join(destination_path, task_id)
     os.makedirs(stageDir)
+    #set permissions
+    os.chmod(stageDir, 0o775)
+    os.chown(stageDir, -1, grp.getgrnam("tomcat").gr_gid)
 
     # get zip file and store it localy to destination path
     r = requests.get(dropbox_data_url.replace("dl=0","dl=1"), stream=True)
