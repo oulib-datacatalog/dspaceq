@@ -3,11 +3,11 @@ import os,json,requests, zipfile, StringIO,grp
 from  glob import iglob
 import pandas as pd
 from cscience_saf import _saf_builder, mkdir_p,uniquify
-from subprocess import CalledProcessError , check_output
+from subprocess import CalledProcessError , check_output,call
 
 def _dspace_command(cmd):
     try:
-        check_output(['sh','/srv/shareok/dspace/bin/dspace',cmd])
+        call(['sh','/srv/shareok/dspace/bin/dspace',cmd])
     except CalledProcessError as e:
         raise Exception(e.output)
 
