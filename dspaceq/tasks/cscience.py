@@ -7,7 +7,7 @@ from subprocess import CalledProcessError , check_output,call
 
 def _dspace_command(cmd):
     try:
-        check_output(['sh','/srv/shareok/dspace/bin/dspace',cmd])
+        check_output(['sh','/srv/shareok/dspace/bin/dspace'] + cmd.split(' '))
     except CalledProcessError as e:
         raise Exception("Error: \n {0} \n Command: \n {1}".format(e.output,cmd))
 
