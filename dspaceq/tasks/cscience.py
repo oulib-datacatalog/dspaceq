@@ -50,7 +50,7 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
     cs_data= pd.read_csv("{0}/cs_data.csv".format(stageDir))
     result_tmpl =[]
 
-    if df_data:
+    if isinstance(df_data, type(pd.DataFrame())):
         # Existing items
         existing_item = pd.merge(df_data,cs_data,right_on='dwc.npdg.sampleid[]',left_on='Sample ID')
         existing_item.columns=[s.strip().replace('# of isolates from ','').split('[')[0].replace(".","_").replace(" ","_").lower() for s in existing_item.columns]
@@ -82,7 +82,7 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
         if dspace_ingest:
             _dspace_command(dspace_cmd)
         result_tmpl.append("SAF's generated {0}".format(stageDir))
-    if df_meta:
+    if isinstance(df_meta, type(pd.DataFrame())):
         result_tmpl.append("Update Wiki need to code")
 
     return ";".join(result_tmpl)
