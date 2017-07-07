@@ -2,6 +2,7 @@ from celery.task import task
 import os,json,requests, zipfile, StringIO,grp
 from  glob import iglob
 import pandas as pd
+import numpy as np
 from cscience_saf import _saf_builder, mkdir_p,uniquify
 from subprocess import CalledProcessError , check_output,call
 
