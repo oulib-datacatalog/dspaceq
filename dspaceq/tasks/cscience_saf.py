@@ -6,6 +6,8 @@ import errno
 import os,json
 import pandas as pd
 from shutil import copyfile
+from glob import iglob
+
 try:
     from configparser import ConfigParser
 except:
