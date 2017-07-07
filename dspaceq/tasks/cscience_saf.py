@@ -124,6 +124,7 @@ def _saf_builder(stageDir, df):
     saf_ct=1
     headers ={'Content-Type':'application/json'}
     mapfile=[]
+    wrkDir=None
     for row in df.itertuples():
         if 'id' in df.columns:
             # Make saf directories for existing items

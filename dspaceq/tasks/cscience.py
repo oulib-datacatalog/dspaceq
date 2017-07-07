@@ -74,14 +74,16 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
         #make saf
         cmd_tmpl = "import --{0} --eperson={1} --collection={2} --source={3} --mapfile={4}"
         wrkDir = _saf_builder(stageDir,existing_item)
-        dspace_cmd=cmd_tmpl.format("replace",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
-        if dspace_ingest:
-            _dspace_command(dspace_cmd)
+        if wrkDir:
+            dspace_cmd=cmd_tmpl.format("replace",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
+            if dspace_ingest:
+                _dspace_command(dspace_cmd)
 
         wrkDir = _saf_builder(stageDir,new_item)
-        dspace_cmd=cmd_tmpl.format("add",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
-        if dspace_ingest:
-            _dspace_command(dspace_cmd)
+        if wrkDir:
+            dspace_cmd=cmd_tmpl.format("add",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
+            if dspace_ingest:
+                _dspace_command(dspace_cmd)
         result_tmpl.append("SAF's generated {0}".format(stageDir))
     if isinstance(df_meta, type(pd.DataFrame())):
         result_tmpl.append("Update Wiki need to code")
