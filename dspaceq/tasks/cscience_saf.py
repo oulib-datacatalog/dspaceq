@@ -93,7 +93,7 @@ def _post_api(url,data):
     return True
 def _update_zipcode(zip_code):
     data_app = "HKZ8NnhZPAvA4I18BiS9MIfZvYiwRrazc9IZxZYnztXDcYLOhEY3md3Rcmo4NyDZ"
-    url ="https://www.zipcodeapi.com/rest/{0}/info.json/{1}/degrees".format(data_app,'{0:05d}'.format(zip_code))
+    url ="https://www.zipcodeapi.com/rest/{0}/info.json/{1}/degrees".format(data_app,zip_code)
     req = requests.get(url)
     data = req.json()
     if "error_msg" in data:
