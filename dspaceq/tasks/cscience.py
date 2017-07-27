@@ -78,7 +78,7 @@ def ingest_cscience_data(dropbox_data_url,cs_collection='11244/28096',destinatio
             dspace_cmd=cmd_tmpl.format("replace",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
             if dspace_ingest:
                 _dspace_command(dspace_cmd)
-        return new_item.columns
+        #return new_item.columns
         wrkDir = _saf_builder(stageDir,new_item)
         if wrkDir:
             dspace_cmd=cmd_tmpl.format("add",eperson,cs_collection,wrkDir,os.path.join(wrkDir,"mapfile"))
