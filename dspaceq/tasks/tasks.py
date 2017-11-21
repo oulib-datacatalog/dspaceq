@@ -64,6 +64,30 @@ def get_bib_record(mmsid):
         return {"error": "Alma Connection Error - try again later."}
 
 
+def get_marc_from_bib(bib_record):
+    """ returns marc xml from bib record string"""
+    record = etree.fromstring(bib_record).find("record")
+    record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
+    return etree.ElementTree(record)
+
+def marc_xml_to_dc_xml(marc_xml):
+    """ returns dublin core xml from marc xml """
+    marc2dc_xslt = etree.parse('xlst/MARC21slim2RDFDC.xsl')
+    transform = etree.XSLT(marc2dc_xslt)
+    return transform(marc_xml)
+
+
+def validate_marc(marc_xml):
+    with open('xlst/MARC21slim.xsd') as f:
+        schema = etree.XMLSchema(etree.fromstring(f.read()))
+    parser = etree.XMLParser(schema=schema)
+    return etree.fromstring(etree.tostring(marc_xml), parser)
+
+
+def bib_to_dc(bib_record):
+    return marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record)))
+
+
 def list_s3_files(bag_name):
     s3_bucket='ul-bagit'
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
@@ -183,5 +207,11 @@ def update_alma_url_field(mmsid, url):
     result = requests.get(alma_url.format(mmsid, alma_key))
     if result.status_code == requests.codes.ok:
         new_xml = _update_alma_url_field(result.content, url)
-        put_result = requests.put  # TODO: add additional code
+        put_result = requests.put(url=url, data=new_xml, headers={"content-type": "application/xml"})
+        if put_result.status_code == requests.codes.ok:
+            return "Updated record"
+        else:
+            return {"error": "Could not update record"}
+    else:
+        return {"error": "Could not access alma"}
         
