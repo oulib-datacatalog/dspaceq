@@ -1,10 +1,12 @@
-#from celery.task import task
+from celery.task import task
+from celery import signature
 from lxml import etree
 from itertools import compress
 from json import loads
 import logging
 import requests
 import boto3
+import pkg_resources
 
 
 logging.basicConfig(level=logging.INFO)
@@ -17,9 +19,11 @@ etd_search = "{0}/api/catalog/data/catalog/etd/.json?query={{\"filter\":{{\"inge
 # search string on etd  {"filter":{"ingested":{"$ne":true}}}
 alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
 
+# TODO: import alma_key, alma_rw_key, etd_notification_email, 
+
 
 #Example task
-#@task()
+@task()
 def add(x, y):
     """ Example task that adds two numbers or strings
         args: x and y
@@ -70,16 +74,18 @@ def get_marc_from_bib(bib_record):
     record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
     return etree.ElementTree(record)
 
+
 def marc_xml_to_dc_xml(marc_xml):
     """ returns dublin core xml from marc xml """
-    marc2dc_xslt = etree.parse('xlst/MARC21slim2RDFDC.xsl')
+    xml_path = pkg_resources.resource_filename(__name__, 'xslt/MARC21slim2RDFDC.xsl')
+    marc2dc_xslt = etree.parse(xml_path)
     transform = etree.XSLT(marc2dc_xslt)
     return transform(marc_xml)
 
 
 def validate_marc(marc_xml):
-    with open('xlst/MARC21slim.xsd') as f:
-        schema = etree.XMLSchema(etree.fromstring(f.read()))
+    xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
+    schema = etree.XMLSchema(etree.fromstring(xml))
     parser = etree.XMLParser(schema=schema)
     return etree.fromstring(etree.tostring(marc_xml), parser)
 
@@ -132,8 +138,7 @@ def check_missing(mmsids):
     return zip(mmsids, missing)
 
 
-
-#@task()
+@task()
 def notify_etd_missing_fields():
     """
     Sends email to collections to notify of missing fields in Alma
@@ -142,10 +147,19 @@ def notify_etd_missing_fields():
     logging.info("Sending email notification of missing alma fields to collections")
     mmsids = [record.get("mmsid") for record in get_bags(etd_search) if record.get("mmsid") is not None]
     missing = map(check_missing, mmsids)
-    print(missing)
+    send_email = signature(
+       "emailq.tasks.tasks.sendmail",
+       kwargs={
+           'to': etd_notification_email,
+           'subject': 'Missing ETD Fields',
+           'body': dumps(missing)
+           })
+    send_email()
+    logging.info("Sent ETD notification email")
+    return "Notification Sent"
 
 
-#@task()
+@task()
 def ingest_thesis_disertation(bag, collection, eperson="libir@ou.edu"):
     """
     Ingest a bagged thesis or disertation into dspace
@@ -188,7 +202,7 @@ def _update_alma_url_field(bib_record, url):
     return etree.tostring(tree, standalone="yes", encoding="UTF-8")
 
 
-#@task()
+@task()
 def update_alma_url_field(mmsid, url):
     """
     Updates the Electronic location (tag 856) in Alma with the URL
