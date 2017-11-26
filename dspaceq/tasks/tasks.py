@@ -19,7 +19,7 @@ etd_search = "{0}/api/catalog/data/catalog/etd/.json?query={{\"filter\":{{\"inge
 # search string on etd  {"filter":{"ingested":{"$ne":true}}}
 alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
 
-# TODO: import alma_key, alma_rw_key, etd_notification_email, 
+# TODO: import alma_key, alma_rw_key, etd_notification_email, alma_notification_email, rest_endpoint
 
 
 #Example task
@@ -64,7 +64,11 @@ def get_bib_record(mmsid):
         result = requests.get(alma_url.format(mmsid, alma_key))
         if result.status_code == requests.codes.ok:
             return result.content
+        else:
+            logging.error(result.content)
+            return {"error": "Alma server returned code: {0}".format(result.status_code)
     except:
+        logging.error("Alma Connection Error")
         return {"error": "Alma Connection Error - try again later."}
 
 
@@ -130,6 +134,39 @@ def missing_fields(bib_record):
     return ["Could not find record!"]
 
 
+def guess_collection(bib_record):
+    """ attempts to determine collection based off of marc21 tags 500 and 502 in Alma record """
+    default_org = "OU"
+    default_type = "THESIS"
+    orgs = {"university of oklahoma": "OU"}
+    types = {"thesis": "THESIS",
+             "theses": "THESIS",
+             "dissertation": "DISSERTATION",
+             "dissertations": "DISSERTATION"}
+    collections = {"OU_THESIS": "11244/23528",
+                   "OU_DISSERTATION": "11244/10476"}
+    tree = etree.XML(bib_record)
+    sub500 = tree.find("record/datafield[@tag='500']/subfield[@code='a']")
+    sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
+    use_org = None
+    use_type = None
+    if sub500 is not None:
+        text = sub500.text.lower()
+    elif sub502 is not None:
+        text = sub502.text.lower()
+    for org_key in orgs.keys():
+        if org_key in text:
+            use_org = orgs[org_key]
+            break
+    for type_key in types.keys():
+        if type_key in text:
+            use_type = types[type_key]
+            break
+    use_org = use_org if use_org is not None else default_org
+    use_type = use_type if use_type is not None else default_type
+    return collections["{0}_{1}".format(use_org, use_type)]
+
+
 def check_missing(mmsids):
     """ Checks for missing fields stored in Alma """
     mmsids = [mmsids] if type(mmsids) != list else mmsids
@@ -144,7 +181,6 @@ def notify_etd_missing_fields():
     Sends email to collections to notify of missing fields in Alma
     for requested Theses and Disertations
     """
-    logging.info("Sending email notification of missing alma fields to collections")
     mmsids = [record.get("mmsid") for record in get_bags(etd_search) if record.get("mmsid") is not None]
     missing = map(check_missing, mmsids)
     send_email = signature(
@@ -160,25 +196,31 @@ def notify_etd_missing_fields():
 
 
 @task()
-def ingest_thesis_disertation(bag, collection, eperson="libir@ou.edu"):
+def ingest_thesis_disertation(bag, collection="", eperson="libir@ou.edu"):
     """
     Ingest a bagged thesis or disertation into dspace
 
     args:
        bag (string); Name of bag to ingest
-       collection (string); dspace collection id to load into
+       collection (string); dspace collection id to load into - if blank will determine from Alma
        eperson (string); email address to send notification to
     """
 
-    logging.info("Processing bag: {0}\nCollection: {1}\nEperson: {2}".format(bag, collection, eperson))
+    if collection == "":
+        mmsid = get_mmsid(bag)
+        bib_record = get_bib_record(mmsid)
+        if type(bib_record) is not dict:
+            collection = guess_collection(bib_record)
+        else:
+            logging.error("failed to get bib_record to determine")
+            return bib_record  # failed - pass along error message
 
-    # Copy files from bag in S3 to staging area
+    logging.info("Processing bag: {0}\nCollection: {1}\nEperson: {2}".format(bag, collection, eperson))
+    
+    # files to include in ingest
     files = list_s3_files(bag_name)
 
-
-    # Generate SAF package
-    # Ingest SAF package
-    # Cleanup
+    # TODO: Call librepotools safbuilder and ingest routine
 
 
 def _update_alma_url_field(bib_record, url):
@@ -203,13 +245,14 @@ def _update_alma_url_field(bib_record, url):
 
 
 @task()
-def update_alma_url_field(mmsid, url):
+def update_alma_url_field(mmsid, url, notify=True):
     """
     Updates the Electronic location (tag 856) in Alma with the URL
 
     args:
        mmsid (string); MMSID of the object to update in Alma
        url (string); the corresponding url in ShareOK/Commons for the the object
+       notify (boolean); notify alma team of update - default is true
     """
 
     """
@@ -223,9 +266,22 @@ def update_alma_url_field(mmsid, url):
         new_xml = _update_alma_url_field(result.content, url)
         put_result = requests.put(url=url, data=new_xml, headers={"content-type": "application/xml"})
         if put_result.status_code == requests.codes.ok:
+            logging.info("Alma record updated for mmsid: {0}".format(mmsid))
+            if notify == True:
+                send_email = signature(
+                    "emailq.tasks.tasks.sendmail",
+                    kwargs={
+                    'to': alma_notification_email,
+                    'subject': 'ETD Record Updated',
+                    'body': mmsid
+                })
+                send_email()
+                logging.info("Sent Alma notification email")
             return "Updated record"
         else:
+            logging.error("Could not update record: {0}".format(mmsid))
             return {"error": "Could not update record"}
     else:
+        logging.error("Could not access alma")
         return {"error": "Could not access alma"}
         
