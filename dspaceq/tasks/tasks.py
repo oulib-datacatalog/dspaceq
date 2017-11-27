@@ -187,7 +187,7 @@ def notify_etd_missing_fields():
            'subject': 'Missing ETD Fields',
            'body': dumps(missing)
            })
-    send_email()
+    send_email.delay()
     logging.info("Sent ETD notification email")
     return "Notification Sent"
 
@@ -272,7 +272,7 @@ def update_alma_url_field(mmsid, url, notify=True):
                     'subject': 'ETD Record Updated',
                     'body': mmsid
                 })
-                send_email()
+                send_email.delay()
                 logging.info("Sent Alma notification email")
             return "Updated record"
         else:
