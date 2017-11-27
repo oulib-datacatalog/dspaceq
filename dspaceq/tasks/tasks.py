@@ -66,7 +66,7 @@ def get_bib_record(mmsid):
             return result.content
         else:
             logging.error(result.content)
-            return {"error": "Alma server returned code: {0}".format(result.status_code)
+            return {"error": "Alma server returned code: {0}".format(result.status_code)}
     except:
         logging.error("Alma Connection Error")
         return {"error": "Alma Connection Error - try again later."}
