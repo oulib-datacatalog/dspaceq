@@ -8,6 +8,8 @@ import requests
 import boto3
 import pkg_resources
 
+from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,8 +20,6 @@ digital_object_search = "{0}/.json?query={{\"filter\":{{\"project\":\"private\",
 etd_search = "{0}/api/catalog/data/catalog/etd/.json?query={{\"filter\":{{\"ingested\":{{\"$ne\":true}}}}}}".format(base_url)
 # search string on etd  {"filter":{"ingested":{"$ne":true}}}
 alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
-
-# TODO: import alma_key, alma_rw_key, etd_notification_email, alma_notification_email, rest_endpoint
 
 
 #Example task
@@ -61,7 +61,7 @@ def get_bags(url):
 
 def get_bib_record(mmsid):
     try:
-        result = requests.get(alma_url.format(mmsid, alma_key))
+        result = requests.get(alma_url.format(mmsid, ALMA_KEY))
         if result.status_code == requests.codes.ok:
             return result.content
         else:
@@ -183,7 +183,7 @@ def notify_etd_missing_fields():
     send_email = signature(
        "emailq.tasks.tasks.sendmail",
        kwargs={
-           'to': etd_notification_email,
+           'to': ETD_NOTIFICATION_EMAIL,
            'subject': 'Missing ETD Fields',
            'body': dumps(missing)
            })
@@ -258,17 +258,17 @@ def update_alma_url_field(mmsid, url, notify=True):
         <subfield code="u">https://shareok.org/something/somethingelse/123454321/blah/blah</subfield>
         </datafield>
     """
-    result = requests.get(alma_url.format(mmsid, alma_key))
+    result = requests.get(alma_url.format(mmsid, ALMA_KEY))
     if result.status_code == requests.codes.ok:
         new_xml = _update_alma_url_field(result.content, url)
-        put_result = requests.put(url=url, data=new_xml, headers={"content-type": "application/xml"})
+        put_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
         if put_result.status_code == requests.codes.ok:
             logging.info("Alma record updated for mmsid: {0}".format(mmsid))
             if notify == True:
                 send_email = signature(
                     "emailq.tasks.tasks.sendmail",
                     kwargs={
-                    'to': alma_notification_email,
+                    'to': ALMA_NOTIFICATION_EMAIL,
                     'subject': 'ETD Record Updated',
                     'body': mmsid
                 })
