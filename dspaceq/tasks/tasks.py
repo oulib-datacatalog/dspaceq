@@ -121,7 +121,7 @@ def missing_fields(bib_record):
         "Title": "record/datafield[@tag=245]",
         "Author": "record/datafield[@tag=100]",
         "Publish Year": "record/datafield[@tag=264]|record/datafield[@tag=260]",
-        "Thesis/Diss Tag": "record/datafield[@tag=502]|record/datafield[@tag=500]",
+        "Thesis/Diss Tag": "record/datafield[@tag=502]",
         "School": "record/datafield[@tag=690]",
         "Subject Heading": "record/datafield[@tag=650]"
     }
@@ -135,7 +135,7 @@ def missing_fields(bib_record):
 
 
 def guess_collection(bib_record):
-    """ attempts to determine collection based off of marc21 tags 500 and 502 in Alma record """
+    """ attempts to determine collection based off of marc21 tag 502 in Alma record """
     default_org = "OU"
     default_type = "THESIS"
     orgs = {"university of oklahoma": "OU"}
@@ -146,13 +146,10 @@ def guess_collection(bib_record):
     collections = {"OU_THESIS": "11244/23528",
                    "OU_DISSERTATION": "11244/10476"}
     tree = etree.XML(bib_record)
-    sub500 = tree.find("record/datafield[@tag='500']/subfield[@code='a']")
     sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
     use_org = None
     use_type = None
-    if sub500 is not None:
-        text = sub500.text.lower()
-    elif sub502 is not None:
+    if sub502 is not None:
         text = sub502.text.lower()
     for org_key in orgs.keys():
         if org_key in text:
