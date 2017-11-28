@@ -7,6 +7,7 @@ import logging
 import requests
 import boto3
 import pkg_resources
+import re
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
 
@@ -220,6 +221,15 @@ def ingest_thesis_disertation(bag, collection="", eperson="libir@ou.edu"):
     # TODO: Call librepotools safbuilder and ingest routine
 
 
+def get_alma_url_field(bib_record):
+    tree = etree.XML(bib_record)
+    url_element = tree.find(".//*[@tag='856'][@ind1='4'][@ind2='0']/subfield[@code='u']")
+    if url_element is not None:
+        return url_element.text
+    else:
+        return None
+
+
 def _update_alma_url_field(bib_record, url):
     """ Updates the url text for the first instance of tag 856(ind1=4, ind2=0) and returns as string
         
@@ -258,8 +268,10 @@ def update_alma_url_field(mmsid, url, notify=True):
         <subfield code="u">https://shareok.org/something/somethingelse/123454321/blah/blah</subfield>
         </datafield>
     """
+    msg = "URL for Alma record {0} has been changed\nfrom: {1}\nto: {2}"
     result = requests.get(alma_url.format(mmsid, ALMA_KEY))
     if result.status_code == requests.codes.ok:
+        old_url = get_alma_url_field(result.content)
         new_xml = _update_alma_url_field(result.content, url)
         put_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
         if put_result.status_code == requests.codes.ok:
@@ -270,7 +282,7 @@ def update_alma_url_field(mmsid, url, notify=True):
                     kwargs={
                     'to': ALMA_NOTIFICATION_EMAIL,
                     'subject': 'ETD Record Updated',
-                    'body': mmsid
+                    'body': msg.format(mmsid, old_url, url)
                 })
                 send_email.delay()
                 logging.info("Sent Alma notification email")
