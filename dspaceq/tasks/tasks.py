@@ -194,13 +194,14 @@ def notify_etd_missing_fields():
 
 
 @task()
-def ingest_thesis_disertation(bag, collection="", eperson="libir@ou.edu"):
+def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="libir@ou.edu"):
     """
     Ingest a bagged thesis or disertation into dspace
 
     args:
        bag (string); Name of bag to ingest
        collection (string); dspace collection id to load into - if blank will determine from Alma
+       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
        eperson (string); email address to send notification to
     """
 
@@ -218,7 +219,25 @@ def ingest_thesis_disertation(bag, collection="", eperson="libir@ou.edu"):
     # files to include in ingest
     files = list_s3_files(bag_name)
 
-    # TODO: Call librepotools safbuilder and ingest routine
+    mmsid = get_mmsid(bag)
+    dc = bib_to_dc(get_bib_record(mmsid))
+
+    data = {"rest endpoint": dspace_endpoint,
+            "collection": collection,
+            "items": 
+              [{bag:,
+                  {"files": files,
+                   "metadata": dc
+                   }
+                }]
+            }
+   
+    # TODO: add chain to update alma with corresponding url
+    ingest = signature(
+       "libtoolsq.tasks.tasks.awsDissertation",
+       args=[dumps(data)])
+    ingest.delay()
+    return "Kicked off ingest for: {0}".format(bag)
 
 
 def get_alma_url_field(bib_record):
