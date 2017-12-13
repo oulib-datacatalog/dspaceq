@@ -3,7 +3,7 @@ from celery import signature, Celery
 from bson.objectid import ObjectId
 from lxml import etree
 from itertools import compress
-from json import loads
+from json import loads, dumps
 import logging
 import requests
 import boto3
@@ -37,10 +37,10 @@ def add(x, y):
     return result
 
 
-def _get_config_parameter(group,param,config_file="cybercom.cfg"):
-    config = ConfigParser() #ConfigParser.ConfigParser()
-    config.read(config_file)
-    return config.get(group,param)
+#def _get_config_parameter(group,param,config_file="cybercom.cfg"):
+#    config = ConfigParser() #ConfigParser.ConfigParser()
+#    config.read(config_file)
+#    return config.get(group,param)
 
 
 def get_mmsid(bag):
@@ -112,7 +112,7 @@ def list_s3_files(bag_name):
 
 def missing_or_blank(xpath_val):
     """ check if xpath is missing or blank """
-    results = root.xpath(xpath_val)
+    results = root.xpath(xpath_val)  #TODO: look at moving back into missing_fields function
     if len(results) > 0:
         return results[0].text == ""
     else:
@@ -220,7 +220,7 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     logging.info("Processing bag: {0}\nCollection: {1}\nEperson: {2}".format(bag, collection, eperson))
     
     # files to include in ingest
-    files = list_s3_files(bag_name)
+    files = list_s3_files(bag)
 
     mmsid = get_mmsid(bag)
     dc = bib_to_dc(get_bib_record(mmsid))
