@@ -240,7 +240,7 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
-            args=dumps(data)
+            args=[dumps(data)]
             )
     ingest.delay()
 
