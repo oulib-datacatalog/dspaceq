@@ -228,11 +228,11 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     data = {"rest endpoint": dspace_endpoint,
             "collection": collection,
             "items": 
-              [{bag:,
-                  {"files": files,
-                   "metadata": dc
-                   }
-                }]
+                [{bag:
+                     {"files": files,
+                      "metadata": dc
+                      }
+                  }]
             }
    
     # TODO: add chain to update alma with corresponding url
@@ -316,8 +316,8 @@ def update_alma_url_field(mmsid, url, notify=True):
         logging.error("Could not access alma")
         return {"error": "Could not access alma"}
 
-@task
-def remove_etd_catalog_record(id)
+@task()
+def remove_etd_catalog_record(id):
     """
     Removes the specified record from the etd digital catalog
 
