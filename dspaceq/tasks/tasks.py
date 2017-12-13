@@ -238,9 +238,13 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
    
     # TODO: add chain to update alma with corresponding url
     ingest = signature(
-       "libtoolsq.tasks.tasks.awsDissertation",
-       args=[dumps(data)])
-    ingest.delay(queue="shareok-repotools-prod-workerq")
+            "libtoolsq.tasks.tasks.awsDissertation", 
+            queue="shareok-repotools-prod-workerq",
+            args=dumps(data)
+            )
+    ingest.delay()
+
+    requests.post
     return "Kicked off ingest for: {0}".format(bag)
 
 
