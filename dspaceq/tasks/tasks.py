@@ -1,5 +1,6 @@
 from celery.task import task
-from celery import signature
+from celery import signature, Celery
+from bson.objectid import ObjectId
 from lxml import etree
 from itertools import compress
 from json import loads
@@ -10,7 +11,7 @@ import pkg_resources
 import re
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
-
+import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +23,8 @@ etd_search = "{0}/api/catalog/data/catalog/etd/.json?query={{\"filter\":{{\"inge
 # search string on etd  {"filter":{"ingested":{"$ne":true}}}
 alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
 
+app = Celery()
+app.config_from_object(celeryconfig)
 
 #Example task
 @task()
@@ -312,4 +315,28 @@ def update_alma_url_field(mmsid, url, notify=True):
     else:
         logging.error("Could not access alma")
         return {"error": "Could not access alma"}
-        
+
+@task
+def remove_etd_catalog_record(id)
+    """
+    Removes the specified record from the etd digital catalog
+
+    args:
+      id (string); this is the value specified by "_id" in the digital catalog record
+    """
+
+    db_client = app.backend.database.client
+
+    if "catalog" not in db_client.database_names():
+        return {"error": "catalog is missing"}
+    if "etd" not in db_client.catalog.collection_names():
+        return {"error": "etd collection is missing"}
+
+    etd = db_client.catalog.etd
+    record = etd.find_one({'_id': ObjectID(id)})
+    if record:
+        etd.remove({'_id': ObjectID(id)})
+        logging.info("Removed {0} from etd collection")
+        return "Record {0} has been removed".format(id)
+    else:
+        return {"error": "Record {0} not found"}
