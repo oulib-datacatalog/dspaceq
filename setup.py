@@ -2,9 +2,9 @@
 #ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(name='dspaceq',
-      version='0.0.31',
+      version='0.0.33',
       packages= find_packages(),
-      package_data={'dspaceq':['tasks/templates/*.tmpl','dspaceq/tasks/templates/*.tmpl']},
+      package_data={'dspaceq':['tasks/templates/*.tmpl','dspaceq/tasks/templates/*.tmpl','tasks/xslt/*']},
       install_requires=[
           'celery==3.1.22',
           'pymongo==3.2.1',
