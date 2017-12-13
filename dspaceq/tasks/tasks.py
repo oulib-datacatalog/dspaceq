@@ -335,7 +335,8 @@ def remove_etd_catalog_record(id)
     etd = db_client.catalog.etd
     record = etd.find_one({'_id': ObjectID(id)})
     if record:
-        etd.remove({'_id': ObjectID(id)})
+        #etd.remove({'_id': ObjectID(id)})
+        etd.delete_one({'_id': ObjectID(id)})  # limit to at most one record
         logging.info("Removed {0} from etd collection")
         return "Record {0} has been removed".format(id)
     else:
