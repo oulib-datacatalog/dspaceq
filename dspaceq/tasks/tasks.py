@@ -99,7 +99,8 @@ def validate_marc(marc_xml):
 
 
 def bib_to_dc(bib_record):
-    return marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record)))
+    """ returns dc as string from bib_record """
+    return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
 
 
 def list_s3_files(bag_name):
