@@ -82,7 +82,7 @@ def get_marc_from_bib(bib_record):
 
 def marc_xml_to_dc_xml(marc_xml):
     """ returns dublin core xml from marc xml """
-    xml_path = pkg_resources.resource_filename(__name__, 'xslt/MARC21slim2RDFDC.xsl')
+    xml_path = pkg_resources.resource_filename(__name__, 'xslt/marc2dspacedc.xsl')
     marc2dc_xslt = etree.parse(xml_path)
     transform = etree.XSLT(marc2dc_xslt)
     return transform(marc_xml)
