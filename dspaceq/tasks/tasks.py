@@ -222,6 +222,7 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     
     # files to include in ingest
     files = list_s3_files(bag)
+    logging.info("Using files: {0}".format(files))
 
     mmsid = get_mmsid(bag)
     dc = bib_to_dc(get_bib_record(mmsid))
