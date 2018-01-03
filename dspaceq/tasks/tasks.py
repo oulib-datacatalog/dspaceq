@@ -226,21 +226,13 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     mmsid = get_mmsid(bag)
     dc = bib_to_dc(get_bib_record(mmsid))
 
-    data = {"rest endpoint": dspace_endpoint,
-            "collection": collection,
-            "items": 
-                [{bag:
-                     {"files": files,
-                      "metadata": dc
-                      }
-                  }]
-            }
+    items = [{bag: {"files": files, "metadata": dc}}]
    
     # TODO: add chain to update alma with corresponding url
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
-            args=[dumps(data)]
+            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
     ingest.delay()
 
