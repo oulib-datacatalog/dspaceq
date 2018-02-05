@@ -1,30 +1,22 @@
 from celery.task import task
 from celery import signature, Celery
 from bson.objectid import ObjectId
-from lxml import etree
-from itertools import compress
 from json import loads, dumps
 import logging
 import requests
-import boto3
-import pkg_resources
-import re
+import jinja2
+
+from utils import *
+from config import alma_url, digital_object_url
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
 
-base_url = "https://cc.lib.ou.edu"
-digital_object_url = "{0}/api/catalog/data/catalog/digital_objects".format(base_url)
-digital_object_search = "{0}/.json?query={{\"filter\":{{\"project\":\"private\",\"bag\":{{\"$regex\":\"^share*\"}}}}}}".format(digital_object_url)
-# search string on digital_objects  {"filter":{"project":"private","bag":{"$regex":"^share*"}}}
-etd_search = "{0}/api/catalog/data/catalog/etd/.json?query={{\"filter\":{{\"ingested\":{{\"$ne\":true}}}}}}".format(base_url)
-# search string on etd  {"filter":{"ingested":{"$ne":true}}}
-alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
-
 app = Celery()
 app.config_from_object(celeryconfig)
+
 
 #Example task
 @task()
@@ -37,164 +29,50 @@ def add(x, y):
     return result
 
 
-#def _get_config_parameter(group,param,config_file="cybercom.cfg"):
-#    config = ConfigParser() #ConfigParser.ConfigParser()
-#    config.read(config_file)
-#    return config.get(group,param)
-
-
-def get_mmsid(bag):
-    """ get the mmsid from end of bag name """
-    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
-    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
-        return mmsid
-    return None
-
-
-def get_bags(url):
-    """ iterate over pages of search results yielding bag metadata """
-    data = loads(requests.get(url).text)
-    while True:
-        for item in data['results']:
-            yield item
-        if data['next'] is not None:
-            data = loads(requests.get(data['next']).text)
-        else:
-            break
-
-
-def get_bib_record(mmsid):
-    try:
-        result = requests.get(alma_url.format(mmsid, ALMA_KEY))
-        if result.status_code == requests.codes.ok:
-            return result.content
-        else:
-            logging.error(result.content)
-            return {"error": "Alma server returned code: {0}".format(result.status_code)}
-    except:
-        logging.error("Alma Connection Error")
-        return {"error": "Alma Connection Error - try again later."}
-
-
-def get_marc_from_bib(bib_record):
-    """ returns marc xml from bib record string"""
-    record = etree.fromstring(bib_record).find("record")
-    record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
-    return etree.ElementTree(record)
-
-
-def marc_xml_to_dc_xml(marc_xml):
-    """ returns dublin core xml from marc xml """
-    xml_path = pkg_resources.resource_filename(__name__, 'xslt/marc2dspacedc.xsl')
-    marc2dc_xslt = etree.parse(xml_path)
-    transform = etree.XSLT(marc2dc_xslt)
-    return transform(marc_xml)
-
-
-def validate_marc(marc_xml):
-    xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
-    schema = etree.XMLSchema(etree.fromstring(xml))
-    parser = etree.XMLParser(schema=schema)
-    return etree.fromstring(etree.tostring(marc_xml), parser)
-
-
-def bib_to_dc(bib_record):
-    """ returns dc as string from bib_record """
-    return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
-
-
-def list_s3_files(bag_name):
-    s3_bucket='ul-bagit'
-    s3_destination='private/shareok/{0}/data/'.format(bag_name)
-    s3 = boto3.client('s3')
-    files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
-    return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
-
-
-def missing_or_blank(xpath_val):
-    """ check if xpath is missing or blank """
-    results = root.xpath(xpath_val)  #TODO: look at moving back into missing_fields function
-    if len(results) > 0:
-        return results[0].text == ""
-    else:
-        return True
- 
-
-def missing_fields(bib_record):
-    # Fields to verify
-    xpath_lookup = {
-        "Title": "record/datafield[@tag=245]",
-        "Author": "record/datafield[@tag=100]",
-        "Publish Year": "record/datafield[@tag=264]|record/datafield[@tag=260]",
-        "Thesis/Diss Tag": "record/datafield[@tag=502]",
-        "School": "record/datafield[@tag=690]",
-        "Subject Heading": "record/datafield[@tag=650]"
-    }
-    if bib_record is not None and type(bib_record) is not dict:
-        root = etree.fromstring(bib_record)            
-        missing = map(missing_or_blank, xpath_lookup.values())
-        return list(compress(xpath_lookup.keys(), missing))
-    elif type(bib_record) is dict:
-        return bib_record.values()  # The lookup of the bib_record failed pass along error message
-    return ["Could not find record!"]
-
-
-def guess_collection(bib_record):
-    """ attempts to determine collection based off of marc21 tag 502 in Alma record """
-    default_org = "OU"
-    default_type = "THESIS"
-    orgs = {"university of oklahoma": "OU"}
-    types = {"thesis": "THESIS",
-             "theses": "THESIS",
-             "dissertation": "DISSERTATION",
-             "dissertations": "DISSERTATION"}
-    collections = {"OU_THESIS": "11244/23528",
-                   "OU_DISSERTATION": "11244/10476"}
-    tree = etree.XML(bib_record)
-    sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
-    use_org = None
-    use_type = None
-    if sub502 is not None:
-        text = sub502.text.lower()
-    for org_key in orgs.keys():
-        if org_key in text:
-            use_org = orgs[org_key]
-            break
-    for type_key in types.keys():
-        if type_key in text:
-            use_type = types[type_key]
-            break
-    use_org = use_org if use_org is not None else default_org
-    use_type = use_type if use_type is not None else default_type
-    return collections["{0}_{1}".format(use_org, use_type)]
-
-
-def check_missing(mmsids):
-    """ Checks for missing fields stored in Alma """
-    mmsids = [mmsids] if type(mmsids) != list else mmsids
-    bib_records = map(get_bib_record, mmsids)
-    missing = map(missing_fields, bib_records)
-    return zip(mmsids, missing)
-
-
 @task()
 def notify_etd_missing_fields():
     """
     Sends email to collections to notify of missing fields in Alma
     for requested Theses and Disertations
     """
-    mmsids = [record.get("mmsid") for record in get_bags(etd_search) if record.get("mmsid") is not None]
-    missing = map(check_missing, mmsids)
-    send_email = signature(
-       "emailq.tasks.tasks.sendmail",
-       kwargs={
-           'to': ETD_NOTIFICATION_EMAIL,
-           'subject': 'Missing ETD Fields',
-           'body': dumps(missing)
-           })
-    send_email.delay()
-    logging.info("Sent ETD notification email")
-    return "Notification Sent"
+    emailtmplt = """The following ETD requests have missing fields:
+    {% for bag in bags %}========================
+      mmsid: {{ bags[bag].mmsid }}
+      Missing Details:{% for field in bags[bag].missing %}
+        {{ field }}{% endfor %}
+      Files:{% for etd_file in bags[bag].files %}
+        {{ etd_file }}{% endfor %}  
+    {% endfor %}
+    """
+
+    mmsids = get_requested_mmsids()
+    digitized_bags = list(get_digitized_bags(mmsids))
+    digitized_mmsids = [get_mmsid(bag) for bag in digitized_bags]
+    missing = [item for item in check_missing(digitized_mmsids) if item[1] != []]
+    bags_missing_details = {}
+    for bag in digitized_bags:
+        for mmsid, items in missing:
+            if mmsid in bag:
+                bags_missing_details[bag] = {}
+                bags_missing_details[bag]['mmsid'] = mmsid
+                bags_missing_details[bag]['missing'] = items
+                bags_missing_details[bag]['files'] = ["https://s3.amazonaws.com/{0}".format(x) for x in list_s3_files(bag)]
+    if bags_missing_details:
+        env = jinja2.Environment()
+        tmplt = env.from_string(emailtmplt)
+        msg = tmplt.render(bags=bags_missing_details)
+        send_email = signature(
+           "emailq.tasks.tasks.sendmail",
+           kwargs={
+               'to': ETD_NOTIFICATION_EMAIL,
+               'subject': 'Missing ETD Fields',
+               'body': msg
+               })
+        send_email.delay()
+        logging.info("Sent ETD notification email")
+        return "Notification Sent"
+    logging.info("No missing attributes - no notification email")
+    return "No Missing Details"
 
 
 @task()
@@ -222,32 +100,21 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
     
     # files to include in ingest
     files = list_s3_files(bag)
-    logging.warning("Using files: {0}".format(files))
+    logging.info("Using files: {0}".format(files))
 
     mmsid = get_mmsid(bag)
     dc = bib_to_dc(get_bib_record(mmsid))
 
     items = [{bag: {"files": files, "metadata": dc}}]
    
-    # TODO: add chain to update alma with corresponding url
+    # TODO: add chain to update alma with corresponding url and update data catalog
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
     ingest.delay()
-
-    requests.post
     return "Kicked off ingest for: {0}".format(bag)
-
-
-def get_alma_url_field(bib_record):
-    tree = etree.XML(bib_record)
-    url_element = tree.find(".//*[@tag='856'][@ind1='4'][@ind2='0']/subfield[@code='u']")
-    if url_element is not None:
-        return url_element.text
-    else:
-        return None
 
 
 def _update_alma_url_field(bib_record, url):
