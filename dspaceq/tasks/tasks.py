@@ -113,8 +113,12 @@ def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="
             queue="shareok-repotools-prod-workerq",
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
+    echo = signature(
+        "dspaceq.tasks.tasks.echo_results",
+        queue="shareok-dspace5xtest-test-workerq"
+    )
     update_alma = update_alma_url_field.s()
-    chain = (ingest | group(echo_results.s(), echo_results.s()))
+    chain = (ingest | group(echo, echo_results.s()))
     chain.delay()
     return "Kicked off ingest for: {0}".format(bag)
 
