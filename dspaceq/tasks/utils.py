@@ -3,7 +3,9 @@ import pkg_resources
 import re
 import requests
 import logging
+import datetime
 from celery import Celery
+from bson.objectid import ObjectId
 from itertools import compress
 from json import loads, dumps
 from lxml import etree
@@ -24,7 +26,7 @@ def get_mmsid(bag):
     return None
 
 
-def get_bags(url):
+def(url):
     """ iterate over pages of search results yielding bag metadata """
     data = loads(requests.get(url).text)
     while True:
@@ -38,7 +40,10 @@ def get_bags(url):
 
 def get_requested_mmsids():
     """ queries requests for digitizations and returns list of mmsids """
-    return [bag['mmsid'] for bag in get_bags("https://cc.lib.ou.edu/api/catalog/data/catalog/etd/.json")]
+    #return [bag['mmsid'] for bag in get_bags("https://cc.lib.ou.edu/api/catalog/data/catalog/etd/.json")]
+    db_client = app.backend.database.client
+    etd = db_client.catalog.etd
+    return [bag['mmsid'] for bag in etd.find({})]
 
 
 def get_bib_record(mmsid):
@@ -129,8 +134,8 @@ def guess_collection(bib_record):
                    "OU_DISSERTATION": "11244/10476"}
     tree = etree.XML(bib_record)
     sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
-    use_org = None
-    use_type = None
+    use_org = default_org
+    use_type = default_type
     if sub502 is not None:
         text = sub502.text.lower()
     for org_key in orgs.keys():
@@ -141,8 +146,6 @@ def guess_collection(bib_record):
         if type_key in text:
             use_type = types[type_key]
             break
-    use_org = use_org if use_org is not None else default_org
-    use_type = use_type if use_type is not None else default_type
     return collections["{0}_{1}".format(use_org, use_type)]
 
 
@@ -175,17 +178,54 @@ def get_digitized_bags(mmsids):
         This looks for digitized objects in S3 that have not been ingested into shareok
 
     """
-    options = {
-        'filter':
-            {'bag': {'$regex': None},
-             'locations.s3.exists': True,
-             'project': 'private'
-             }
-    }
-    search = "{0}/.json?query={1}"
-    for chunked_mmsids in chunk_list(mmsids, 5):
-        regex_list = "|".join("^share.*{0}$".format(mmsid) for mmsid in chunked_mmsids) # begins with share and ends with mmsid
-        #regex_list = "|".join("{0}$".format(mmsid) for mmsid in chunked_mmsids)
-        options['filter']['bag']['$regex'] = regex_list
-        for bag in get_bags(search.format(digital_object_url, dumps(options))):
-            yield bag['bag'].split("/")[-1]  # strip off "shareok/"
+    #options = {
+    #    'filter':
+    #        {'bag': {'$regex': None},
+    #         'locations.s3.exists': True,
+    #         'application.dspace.ingested': {'$ne': True},
+    #         'project': 'private'
+    #         }
+    #}
+    #search = "{0}/.json?query={1}"
+    #for chunked_mmsids in chunk_list(mmsids, 5):
+    #    regex_list = "|".join("^share.*{0}$".format(mmsid) for mmsid in chunked_mmsids)  # begins with share and ends with mmsid
+    #    #regex_list = "|".join("{0}$".format(mmsid) for mmsid in chunked_mmsids)
+    #    options['filter']['bag']['$regex'] = regex_list
+    #    for bag in get_bags(search.format(digital_object_url, dumps(options))):
+    #        yield bag['bag'].split("/")[-1]  # strip off "shareok/"
+
+    regex_list = '|'.join('^share.*{0}$'.format(mmsid) for mmsid in mmsids)
+    options = {'bag':
+                   {'$regex': regex_list,
+                    'locations.s3.exists': True,
+                    'application.dspace.ingested': {'$ne': True},
+                    'project': 'private'
+                    }
+               }
+    db_client = app.backend.database.client
+    digital_objects = db_client.catalog.digital_objects
+    results = digital_objects.find(options)
+    return [result['bag'].split('/')[-1] for result in results]
+
+
+
+def update_ingest_status(bagname, url, application='dspace', project='private', ingested=True):
+    options = {'ingested': ingested,
+               'url': url,
+               'datetime': datetime.datetime.utcnow().isoformat()
+               }
+    db_client = app.backend.database.client
+    digital_objects = db_client.catalog.digital_objects
+    documents = digital_objects.find({'bag': bagname, 'project': project})
+    for document in documents:
+        if not document.get('application'):
+            document['application'] = {}
+        if not document['application'].get(application):
+            document['application'][application] = {}
+        # iterate over options to preserve other existing attributes
+        for option, value in options.items():
+            document['application'][application][option] = value
+        if document != {}:  # prevent overwriting with blank document
+            status = digital_objects.update({'_id': ObjectId(document['_id'])}, document)
+            if not status['ok']:
+                logging.error("Could not update dspace ingest status: {0}".format(document['bag']))

@@ -76,9 +76,9 @@ def notify_etd_missing_fields():
 
 
 @task()
-def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="libir@ou.edu"):
+def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="libir@ou.edu"):
     """
-    Ingest a bagged thesis or disertation into dspace
+    Ingest a bagged thesis or dissertation into dspace
 
     args:
        bag (string); Name of bag to ingest
@@ -113,6 +113,7 @@ def ingest_thesis_disertation(bag, collection="", dspace_endpoint="", eperson="l
             queue="shareok-repotools-prod-workerq",
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
+    update_alma = update_alma_url_field.s(mmsid=mmsid)
     ingest.delay()
     return "Kicked off ingest for: {0}".format(bag)
 
@@ -178,8 +179,10 @@ def update_alma_url_field(mmsid, url, notify=True):
             logging.error("Could not update record: {0}".format(mmsid))
             return {"error": "Could not update record"}
     else:
+        # TODO: Add retry
         logging.error("Could not access alma")
         return {"error": "Could not access alma"}
+
 
 @task()
 def remove_etd_catalog_record(id):
