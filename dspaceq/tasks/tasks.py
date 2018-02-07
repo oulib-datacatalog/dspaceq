@@ -114,7 +114,8 @@ def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
     update_alma = update_alma_url_field.s()
-    ingest.delay()
+    chain = (ingest | group(echo_results.s(), echo_results.s()))
+    chain.delay()
     return "Kicked off ingest for: {0}".format(bag)
 
 
@@ -214,10 +215,3 @@ def remove_etd_catalog_record(id):
 @task()
 def echo_results(*args):
     return args
-
-
-@task()
-def test_grouping(bag):
-    chain = (ingest_thesis_dissertation.s(bag, "", "https://test.shareok.org/rest") | group(echo_results.s(), echo_results.s()))
-    chain.delay()
-    return "Kicked off tasks..."
