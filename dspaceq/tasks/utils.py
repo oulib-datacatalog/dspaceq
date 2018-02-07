@@ -26,7 +26,7 @@ def get_mmsid(bag):
     return None
 
 
-def(url):
+def get_bags(url):
     """ iterate over pages of search results yielding bag metadata """
     data = loads(requests.get(url).text)
     while True:
