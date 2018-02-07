@@ -1,5 +1,5 @@
 from celery.task import task
-from celery import signature, Celery
+from celery import signature, group, Celery
 from bson.objectid import ObjectId
 from json import loads, dumps
 import logging
@@ -113,7 +113,7 @@ def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="
             queue="shareok-repotools-prod-workerq",
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
-    update_alma = update_alma_url_field.s(mmsid=mmsid)
+    update_alma = update_alma_url_field.s()
     ingest.delay()
     return "Kicked off ingest for: {0}".format(bag)
 
@@ -209,3 +209,15 @@ def remove_etd_catalog_record(id):
         return "Record {0} has been removed".format(id)
     else:
         return {"error": "Record {0} not found"}
+
+
+@task()
+def echo_results(*args):
+    return args
+
+
+@task()
+def test_grouping(bag):
+    chain = (ingest_thesis_dissertation.s(bag, "", "https://test.shareok.org/rest") | group(echo_results.s(), echo_results.s()))
+    chain.delay()
+    return "Kicked off tasks..."
