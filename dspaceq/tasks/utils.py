@@ -7,10 +7,10 @@ import datetime
 from celery import Celery
 from bson.objectid import ObjectId
 from itertools import compress
-from json import loads, dumps
+from json import loads
 from lxml import etree
 
-from config import alma_url, digital_object_url
+from config import alma_url
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
 import celeryconfig
@@ -178,22 +178,6 @@ def get_digitized_bags(mmsids):
         This looks for digitized objects in S3 that have not been ingested into shareok
 
     """
-    #options = {
-    #    'filter':
-    #        {'bag': {'$regex': None},
-    #         'locations.s3.exists': True,
-    #         'application.dspace.ingested': {'$ne': True},
-    #         'project': 'private'
-    #         }
-    #}
-    #search = "{0}/.json?query={1}"
-    #for chunked_mmsids in chunk_list(mmsids, 5):
-    #    regex_list = "|".join("^share.*{0}$".format(mmsid) for mmsid in chunked_mmsids)  # begins with share and ends with mmsid
-    #    #regex_list = "|".join("{0}$".format(mmsid) for mmsid in chunked_mmsids)
-    #    options['filter']['bag']['$regex'] = regex_list
-    #    for bag in get_bags(search.format(digital_object_url, dumps(options))):
-    #        yield bag['bag'].split("/")[-1]  # strip off "shareok/"
-
     regex_list = '|'.join('^share.*{0}$'.format(mmsid) for mmsid in mmsids)
     options = {'bag':
                    {'$regex': regex_list,

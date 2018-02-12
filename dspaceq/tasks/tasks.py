@@ -1,15 +1,15 @@
 from celery.task import task
 from celery import signature, group, Celery
 from bson.objectid import ObjectId
-from json import loads, dumps
+#from json import loads, dumps
 import logging
 import requests
 import jinja2
 
 from utils import *
-from config import alma_url, digital_object_url
+from config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT, QUEUE_NAME
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -115,10 +115,10 @@ def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="
             )
     echo = signature(
         "dspaceq.tasks.tasks.echo_results",
-        queue="shareok-dspace5xtest-test-workerq"
+        queue=QUEUE_NAME
     )
     update_alma = update_alma_url_field.s()
-    chain = (ingest | group(echo, echo_results.s()))
+    chain = (ingest | group(echo, echo_results.s(queue=QUEUE_NAME)))
     chain.delay()
     return "Kicked off ingest for: {0}".format(bag)
 
@@ -218,4 +218,12 @@ def remove_etd_catalog_record(id):
 
 @task()
 def echo_results(*args):
-    return args
+    ingested_items = args.get("success")
+    failed_items = args.get("fail")
+    if ingested_items:
+        bags = []
+        for bagname, url in ingested_items.items():
+            bags.append(bagname)
+        return bags
+    return "No bags"
+
