@@ -217,7 +217,7 @@ def remove_etd_catalog_record(id):
 
 
 @task()
-def echo_results(*args):
+def echo_results(args):
     ingested_items = args.get("success")
     failed_items = args.get("fail")
     if ingested_items:
