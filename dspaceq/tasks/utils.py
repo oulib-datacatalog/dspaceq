@@ -18,6 +18,7 @@ import celeryconfig
 app = Celery()
 app.config_from_object(celeryconfig)
 
+
 def get_mmsid(bag):
     """ get the mmsid from end of bag name """
     mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
@@ -44,6 +45,13 @@ def get_requested_mmsids():
     db_client = app.backend.database.client
     etd = db_client.catalog.etd
     return [bag['mmsid'] for bag in etd.find({})]
+
+
+def get_requested_etds(mmsid):
+    """ queries requests for digitization by mmsid regex and returns matching records """
+    db_client = app.backend.database.client
+    etd = db_client.catalog.etd
+    return [requested_item for requested_item in etd.find({'mmsid': {'$regex': mmsid}})]
 
 
 def get_bib_record(mmsid):
@@ -192,7 +200,6 @@ def get_digitized_bags(mmsids):
     return [result['bag'].split('/')[-1] for result in results]
 
 
-
 def update_ingest_status(bagname, url, application='dspace', project='private', ingested=True):
     options = {'ingested': ingested,
                'url': url,
@@ -200,8 +207,8 @@ def update_ingest_status(bagname, url, application='dspace', project='private', 
                }
     db_client = app.backend.database.client
     digital_objects = db_client.catalog.digital_objects
-    documents = digital_objects.find({'bag': bagname, 'project': project})
-    for document in documents:
+    document = digital_objects.find_one({'bag': {'$regex': bagname}, 'project': project})
+    if document:
         if not document.get('application'):
             document['application'] = {}
         if not document['application'].get(application):

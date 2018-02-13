@@ -1,5 +1,6 @@
 from celery.task import task
 from celery import signature, group, Celery
+from inspect import cleandoc
 from bson.objectid import ObjectId
 #from json import loads, dumps
 import logging
@@ -9,7 +10,9 @@ import jinja2
 from utils import *
 from config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT, QUEUE_NAME
+from celeryconfig import ALMA_KEY, ALMA_RW_KEY
+from celeryconfig import ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, IR_NOTIFICATION_EMAIL
+from celeryconfig import REST_ENDPOINT, QUEUE_NAME
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +38,8 @@ def notify_etd_missing_fields():
     Sends email to collections to notify of missing fields in Alma
     for requested Theses and Disertations
     """
-    emailtmplt = """The following ETD requests have missing fields:
+    emailtmplt = """
+    The following ETD requests have missing fields:
     {% for bag in bags %}========================
       mmsid: {{ bags[bag].mmsid }}
       Missing Details:{% for field in bags[bag].missing %}
@@ -59,7 +63,7 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag]['files'] = ["https://s3.amazonaws.com/{0}".format(x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
-        tmplt = env.from_string(emailtmplt)
+        tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(bags=bags_missing_details)
         send_email = signature(
            "emailq.tasks.tasks.sendmail",
@@ -69,22 +73,21 @@ def notify_etd_missing_fields():
                'body': msg
                })
         send_email.delay()
-        logging.info("Sent ETD notification email")
+        logging.info("Sent ETD notification email to {0}".format(ETD_NOTIFICATION_EMAIL))
         return "Notification Sent"
     logging.info("No missing attributes - no notification email")
     return "No Missing Details"
 
 
 @task()
-def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="libir@ou.edu"):
+def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPOINT):
     """
     Ingest a bagged thesis or dissertation into dspace
 
     args:
-       bag (string); Name of bag to ingest
-       collection (string); dspace collection id to load into - if blank will determine from Alma
+       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+       collection (string); dspace collection id to load into - if blank, will determine from Alma
        dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
-       eperson (string); email address to send notification to
     """
 
     if collection == "":
@@ -96,31 +99,85 @@ def ingest_thesis_dissertation(bag, collection="", dspace_endpoint="", eperson="
             logging.error("failed to get bib_record to determine")
             return bib_record  # failed - pass along error message
 
-    logging.info("Processing bag: {0}\nCollection: {1}\nEperson: {2}".format(bag, collection, eperson))
-    
+    if bag == "":
+        # Ingest requested items (bags) not yet ingested
+        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
+    else:
+        bags = [bag]
+
+    logging.info("Processing bag(s): {0}\nCollection: {1}".format(bags, collection))
+
+    items = []
     # files to include in ingest
-    files = list_s3_files(bag)
-    logging.info("Using files: {0}".format(files))
+    for bag in bags:
+        files = list_s3_files(bag)
+        logging.info("Using files: {0}".format(files))
 
-    mmsid = get_mmsid(bag)
-    dc = bib_to_dc(get_bib_record(mmsid))
+        mmsid = get_mmsid(bag)
+        dc = bib_to_dc(get_bib_record(mmsid))
 
-    items = [{bag: {"files": files, "metadata": dc}}]
-   
-    # TODO: add chain to update alma with corresponding url and update data catalog
+        items.append({bag: {"files": files, "metadata": dc}})
+
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
             kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
             )
-    echo = signature(
-        "dspaceq.tasks.tasks.echo_results",
+    update_alma = signature(
+        "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
     )
-    update_alma = update_alma_url_field.s()
-    chain = (ingest | group(echo, echo_results.s(queue=QUEUE_NAME)))
+    update_catalog = signature(
+        "dspaceq.tasks.tasks.update_catalog",
+        queue=QUEUE_NAME
+    )
+    send_email = signature(
+        "emailq.tasks.tasks.notify_dspace_etd_loaded",
+        queue=QUEUE_NAME
+    )
+    chain = (ingest | group(update_alma, update_catalog, send_email))
     chain.delay()
     return "Kicked off ingest for: {0}".format(bag)
+
+
+@task()
+def notify_dspace_etd_loaded(args):
+    """
+    Send email notifying repository group that new ETDs have been loaded into the repository
+    This is called by the ingest_thesis_dissertation task
+
+    args:
+       args: {"success": {bagname: url}
+    """
+    ingested_items = args.get("success")
+    if ingested_items:
+        ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
+        mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
+        request_details = get_requested_etds(mmsids_regex)
+        for request in request_details:
+            request['url'] = ingested_url_lookup[request['mmsid']]
+
+        emailtmplt = """
+        The following ETD requests have been loaded into the repository:
+        {% for request in request_details %}========================
+        Requester: {{ requested_details[request].name }}
+        Email: {{ requested_details[request].email }} 
+        URL: {{ requested_details[request].url }}  
+        {% endfor %}
+        """
+        env = jinja2.Environment()
+        tmplt = env.from_string(cleandoc(emailtmplt))
+        msg = tmplt.render(request_details=request_details)
+        send_email = signature(
+           "emailq.tasks.tasks.sendmail",
+           kwargs={
+               'to': IR_NOTIFICATION_EMAIL,
+               'subject': 'ETD Requests Loaded into Repository',
+               'body': msg
+               })
+        send_email.delay()
+        return "Ingest notification sent"
+    return "No items to ingest - no notification sent"
 
 
 def _update_alma_url_field(bib_record, url):
@@ -145,13 +202,13 @@ def _update_alma_url_field(bib_record, url):
 
 
 @task()
-def update_alma_url_field(mmsid, url, notify=True):
+def update_alma_url_field(args, notify=True):
     """
     Updates the Electronic location (tag 856) in Alma with the URL
+    This is called by the ingest_thesis_dissertation task
 
     args:
-       mmsid (string); MMSID of the object to update in Alma
-       url (string); the corresponding url in ShareOK/Commons for the the object
+       args: {"success": {bagname: url}
        notify (boolean); notify alma team of update - default is true
     """
 
@@ -161,32 +218,55 @@ def update_alma_url_field(mmsid, url, notify=True):
         <subfield code="u">https://shareok.org/something/somethingelse/123454321/blah/blah</subfield>
         </datafield>
     """
-    msg = "URL for Alma record {0} has been changed\nfrom: {1}\nto: {2}"
-    result = requests.get(alma_url.format(mmsid, ALMA_KEY))
-    if result.status_code == requests.codes.ok:
-        old_url = get_alma_url_field(result.content)
-        new_xml = _update_alma_url_field(result.content, url)
-        put_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
-        if put_result.status_code == requests.codes.ok:
-            logging.info("Alma record updated for mmsid: {0}".format(mmsid))
-            if notify == True:
-                send_email = signature(
-                    "emailq.tasks.tasks.sendmail",
-                    kwargs={
-                    'to': ALMA_NOTIFICATION_EMAIL,
-                    'subject': 'ETD Record Updated',
-                    'body': msg.format(mmsid, old_url, url)
-                })
-                send_email.delay()
-                logging.info("Sent Alma notification email")
-            return "Updated record"
-        else:
-            logging.error("Could not update record: {0}".format(mmsid))
-            return {"error": "Could not update record"}
-    else:
-        # TODO: Add retry
-        logging.error("Could not access alma")
-        return {"error": "Could not access alma"}
+    ingested_items = args.get("success")
+    if ingested_items:
+        status = {'success': [], 'fail': []}
+        msg = "URL(tag 856) for Alma record {0} has been changed\nfrom: {1}\nto: {2}"
+        for bagname, url in ingested_items.items():
+            mmsid = get_mmsid(bagname)
+            result = requests.get(alma_url.format(mmsid, ALMA_KEY))
+            if result.status_code == requests.codes.ok:
+                old_url = get_alma_url_field(result.content)
+                new_xml = _update_alma_url_field(result.content, url)
+                update_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
+                if update_result.status_code == requests.codes.ok:
+                    logging.info("Alma record updated for mmsid: {0}".format(mmsid))
+                    status['success'].append([bagname, url])
+                    if notify is True:
+                        send_email = signature(
+                            "emailq.tasks.tasks.sendmail",
+                            kwargs={
+                            'to': ALMA_NOTIFICATION_EMAIL,
+                            'subject': 'ETD Record Updated - URL',
+                            'body': msg.format(mmsid, old_url, url)
+                        })
+                        send_email.delay()
+                        logging.info("Sent Alma notification email")
+                else:
+                    logging.error("Could not update record: {0}".format(mmsid))
+                    status['fail'].append([bagname, "Could not update record"])
+            else:
+                # TODO: Add retry
+                logging.error("Could not access alma")
+                status['fail'].append([bagname, "Could not access alma"])
+        return status
+
+
+@task()
+def update_datacatalog(args):
+    """
+    Adds ingested status into Data Catalog
+    This is called by the ingest_thesis_dissertation task
+    
+    args:
+       {"success": {bagname: url}
+    """
+    ingested_items = args.get("success")
+    if ingested_items:
+        for bagname, url in ingested_items.items():
+            update_ingest_status(bagname, url, application='dspace', project='private', ingested=True)
+        return "Updated data catalog"
+    return "No items to update in data catalog"
 
 
 @task()
@@ -197,7 +277,7 @@ def remove_etd_catalog_record(id):
     args:
       id (string); this is the value specified by "_id" in the digital catalog record
     """
-
+    # TODO: update to remove requests that have been ingested - query ingest status of exiting requests
     db_client = app.backend.database.client
 
     if "catalog" not in db_client.database_names():
@@ -214,16 +294,3 @@ def remove_etd_catalog_record(id):
         return "Record {0} has been removed".format(id)
     else:
         return {"error": "Record {0} not found"}
-
-
-@task()
-def echo_results(args):
-    ingested_items = args.get("success")
-    failed_items = args.get("fail")
-    if ingested_items:
-        bags = []
-        for bagname, url in ingested_items.items():
-            bags.append(bagname)
-        return bags
-    return "No bags"
-
