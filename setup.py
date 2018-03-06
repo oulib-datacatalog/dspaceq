@@ -2,7 +2,7 @@
 #ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(name='dspaceq',
-      version='0.0.50',
+      version='0.0.51',
       packages= find_packages(),
       package_data={'dspaceq':['tasks/templates/*.tmpl','dspaceq/tasks/templates/*.tmpl','tasks/xslt/*']},
       install_requires=[
@@ -12,6 +12,7 @@ setup(name='dspaceq',
           'xlrd==1.0.0',
           'xlwt==1.0.0',
           'pandas',
+          'numpy',
           'jinja2',
           'boto3',
           'lxml',
