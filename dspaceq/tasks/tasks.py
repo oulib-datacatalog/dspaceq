@@ -90,15 +90,6 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
        dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
     """
 
-    if collection == "":
-        mmsid = get_mmsid(bag)
-        bib_record = get_bib_record(mmsid)
-        if type(bib_record) is not dict:
-            collection = guess_collection(bib_record)
-        else:
-            logging.error("failed to get bib_record to determine")
-            return bib_record  # failed - pass along error message
-
     if bag == "":
         # Ingest requested items (bags) not yet ingested
         bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
@@ -114,14 +105,24 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         logging.info("Using files: {0}".format(files))
 
         mmsid = get_mmsid(bag)
-        dc = bib_to_dc(get_bib_record(mmsid))
+        bib_record = get_bib_record(mmsid)
+        dc = bib_to_dc(bib_record)
 
         items.append({bag: {"files": files, "metadata": dc}})
+
+        if collection == "":
+            if type(bib_record) is not dict:
+                bag_collection = guess_collection(bib_record)
+            else:
+                logging.error("failed to get bib_record to determine")
+                return bib_record  # failed - pass along error message
+        else:
+            bag_collection = collection
 
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
-            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
+            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":bag_collection, "items":items}
             )
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
