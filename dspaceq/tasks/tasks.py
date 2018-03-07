@@ -97,8 +97,11 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
     else:
         bags = [bag]
 
-    collections = defaultdict(list)
+    if bags == []:
+        return "No items found ready for ingest"
 
+    collections = defaultdict(list)
+    failed = {}
     # files to include in ingest
     for bag in bags:
         files = list_s3_files(bag)
@@ -112,15 +115,15 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
             if type(bib_record) is not dict:
                 collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
             else:
-                logging.error("failed to get bib_record to determine collection")
-                return bib_record  # failed - pass along error message
+                logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
+                failed[bag] = bib_record  # failed - pass along error message
         else:
             collections[collection].append({bag: {"files": files, "metadata": dc}})
 
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
-            kwargs={"dspaceapiurl":dspace_endpoint}
+            kwargs={"dspaceapiurl": dspace_endpoint}
             )
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
@@ -140,7 +143,7 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
         chain = (ingest(collectionhandle=collection, items=items) | group(update_alma, update_catalog, send_email))
         chain.delay()
-    return "Kicked off ingests for: {0}".format(bags)
+    return {"Kicked off ingest": bags, "failed": failed}
 
 
 @task()
