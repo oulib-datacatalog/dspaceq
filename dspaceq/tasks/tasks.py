@@ -2,6 +2,7 @@ from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
 from bson.objectid import ObjectId
+from collections import defaultdict
 #from json import loads, dumps
 import logging
 import requests
@@ -96,9 +97,8 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
     else:
         bags = [bag]
 
-    logging.info("Processing bag(s): {0}\nCollection: {1}".format(bags, collection))
+    collections = defaultdict(list)
 
-    items = []
     # files to include in ingest
     for bag in bags:
         files = list_s3_files(bag)
@@ -108,21 +108,19 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         bib_record = get_bib_record(mmsid)
         dc = bib_to_dc(bib_record)
 
-        items.append({bag: {"files": files, "metadata": dc}})
-
         if collection == "":
             if type(bib_record) is not dict:
-                bag_collection = guess_collection(bib_record)
+                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
             else:
-                logging.error("failed to get bib_record to determine")
+                logging.error("failed to get bib_record to determine collection")
                 return bib_record  # failed - pass along error message
         else:
-            bag_collection = collection
+            collections[collection].append({bag: {"files": files, "metadata": dc}})
 
     ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation", 
             queue="shareok-repotools-prod-workerq",
-            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":bag_collection, "items":items}
+            kwargs={"dspaceapiurl":dspace_endpoint}
             )
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
@@ -136,9 +134,13 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         "emailq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
     )
-    chain = (ingest | group(update_alma, update_catalog, send_email))
-    chain.delay()
-    return "Kicked off ingest for: {0}".format(bag)
+    for collection in collections.keys():
+        collection_bags = [x.keys()[0] for x in collections[collection]]
+        items = collections[collection]
+        logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
+        chain = (ingest(collectionhandle=collection, items=items) | group(update_alma, update_catalog, send_email))
+        chain.delay()
+    return "Kicked off ingests for: {0}".format(bags)
 
 
 @task()
