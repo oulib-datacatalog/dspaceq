@@ -119,13 +119,6 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         else:
             collections[collection].append({bag: {"files": files, "metadata": dc}})
 
-    ingest = signature(
-        "libtoolsq.tasks.tasks.awsDissertation",
-        queue="shareok-repotools-prod-workerq",
-        exchange="shareok-repotools-prod-workerq",
-        routing_key="shareok-repotools-prod-workerq",
-        kwargs={"dspaceapiurl": dspace_endpoint}
-    )
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
@@ -141,8 +134,16 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
     for collection in collections.keys():
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
+        ingest = signature(
+            "libtoolsq.tasks.tasks.awsDissertation",
+            queue="shareok-repotools-prod-workerq",
+            kwargs={"dspaceapiurl": dspace_endpoint,
+                    "collectionhandle": collection,
+                    "items": items
+                    }
+        )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest(collectionhandle=collection, items=items) | group(update_alma, update_catalog, send_email))
+        chain = (ingest | group(update_alma, update_catalog, send_email))
         chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
