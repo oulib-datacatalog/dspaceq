@@ -79,7 +79,6 @@ def notify_etd_missing_fields():
     logging.info("No missing attributes - no notification email")
     return "No Missing Details"
 
-
 @task()
 def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPOINT):
     """
@@ -123,6 +122,8 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
     ingest = signature(
         "libtoolsq.tasks.tasks.awsDissertation",
         queue="shareok-repotools-prod-workerq",
+        exchange="shareok-repotools-prod-workerq",
+        routing_key="shareok-repotools-prod-workerq",
         kwargs={"dspaceapiurl": dspace_endpoint}
     )
     update_alma = signature(
