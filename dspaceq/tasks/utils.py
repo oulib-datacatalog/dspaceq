@@ -187,12 +187,9 @@ def get_digitized_bags(mmsids):
 
     """
     regex_list = '|'.join('^share.*{0}$'.format(mmsid) for mmsid in mmsids)
-    options = {'bag':
-                   {'$regex': regex_list,
-                    'locations.s3.exists': True,
-                    'application.dspace.ingested': {'$ne': True},
-                    'project': 'private'
-                    }
+    options = {'bag': {'$regex': regex_list},
+               'locations.s3.exists': True,
+               'application.dspace.ingested': {'$ne': True},
                }
     db_client = app.backend.database.client
     digital_objects = db_client.catalog.digital_objects
