@@ -141,9 +141,8 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        #chain = (ingest(collectionhandle=collection, items=items) | group(update_alma, update_catalog, send_email))
-        #chain.delay()
-        return collections
+        chain = (ingest(collectionhandle=collection, items=items) | group(update_alma, update_catalog, send_email))
+        chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
 
