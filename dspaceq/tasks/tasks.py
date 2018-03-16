@@ -128,7 +128,7 @@ def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPO
         queue=QUEUE_NAME
     )
     send_email = signature(
-        "emailq.tasks.tasks.notify_dspace_etd_loaded",
+        "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
     )
     for collection in collections.keys():
