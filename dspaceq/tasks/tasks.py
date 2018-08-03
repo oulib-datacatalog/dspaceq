@@ -280,66 +280,6 @@ def notify_etd_missing_fields():
     return "No Missing Details"
 
 
-@task()
-def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPOINT):
-    """
-    Ingest a bagged thesis or dissertation into dspace
-
-    args:
-       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will determine from Alma
-       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
-    """
-
-    if collection == "":
-        mmsid = get_mmsid(bag)
-        bib_record = get_bib_record(mmsid)
-        if type(bib_record) is not dict:
-            collection = guess_collection(bib_record)
-        else:
-            logging.error("failed to get bib_record to determine")
-            return bib_record  # failed - pass along error message
-
-    if bag == "":
-        # Ingest requested items (bags) not yet ingested
-        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
-    else:
-        bags = [bag]
-
-    logging.info("Processing bag(s): {0}\nCollection: {1}".format(bags, collection))
-
-    items = []
-    # files to include in ingest
-    for bag in bags:
-        files = list_s3_files(bag)
-        logging.info("Using files: {0}".format(files))
-
-        mmsid = get_mmsid(bag)
-        dc = bib_to_dc(get_bib_record(mmsid))
-
-        items.append({bag: {"files": files, "metadata": dc}})
-
-    ingest = signature(
-            "libtoolsq.tasks.tasks.awsDissertation", 
-            queue="shareok-repotools-prod-workerq",
-            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
-            )
-    update_alma = signature(
-        "dspaceq.tasks.tasks.update_alma_url_field",
-        queue=QUEUE_NAME
-    )
-    update_catalog = signature(
-        "dspaceq.tasks.tasks.update_catalog",
-        queue=QUEUE_NAME
-    )
-    send_email = signature(
-        "emailq.tasks.tasks.notify_dspace_etd_loaded",
-        queue=QUEUE_NAME
-    )
-    chain = (ingest | group(update_alma, update_catalog, send_email))
-    chain.delay()
-    return "Kicked off ingest for: {0}".format(bag)
-
 
 @task()
 def notify_dspace_etd_loaded(args):
