@@ -25,7 +25,7 @@ from config import alma_url
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY
 from celeryconfig import ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, IR_NOTIFICATION_EMAIL
-from celeryconfig import REST_ENDPOINT, QUEUE_NAME
+from celeryconfig import REST_ENDPOINT, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -35,10 +35,7 @@ app.config_from_object(celeryconfig)
 
 s3 = boto3.resource("s3")
 s3_bucket = 'ul-bagit'
-ALMA_KEY = 'l7xxa730c5d8d8844676ab5e1607d1161322'
-alma_url = "https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/{0}?expand=None&apikey={1}"
-DSPACE_BINARY = "/srv/oulib/dspace/bin/dspace"
-DSPACE_FQDN = "test.shareok.org"
+
 
 #Example task
 @task()
@@ -59,6 +56,7 @@ def get_mmsid(bag):
     return None
 
 def get_bib_record(mmsid):
+    """ bib record includes organization and document type """
     try:
         result = requests.get(alma_url.format(mmsid, ALMA_KEY))
         if result.status_code == requests.codes.ok:
@@ -71,6 +69,7 @@ def get_bib_record(mmsid):
         return {"error": "Alma Connection Error - try again later."}
 
 def list_s3_files(bag_name):
+    """ retrieves list of files (.pdf and .txt only) that are ready for ingest """
     s3_bucket='ul-bagit'
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
     s3 = boto3.client('s3')
@@ -88,6 +87,7 @@ def marc_xml_to_dc_xml(marc_xml):
 
 
 def validate_marc(marc_xml):
+    """ validates that MARC record doesn't contain structural errors according to the specified schema """
     xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
     schema = etree.XMLSchema(etree.fromstring(xml))
     parser = etree.XMLParser(schema=schema)
@@ -104,13 +104,13 @@ def get_marc_from_bib(bib_record):
     record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
     return etree.ElementTree(record)
 
-files = list_s3_files("1945_Lowry_Ruth_99304054302042")
-bib_record = get_bib_record(get_mmsid("1945_Lowry_Ruth_99304054302042"))
+files = list_s3_files("bag_name")
+bib_record = get_bib_record(get_mmsid("bag"))
 dc = bib_to_dc(bib_record)
-dc
 
 @task()
-def ingest(bag_details, collection, notify_email="mpmalahy@ou.edu"):
+def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
+    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace """
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
         bag_dir = join(tempdir, "item_{0}".format(index))
