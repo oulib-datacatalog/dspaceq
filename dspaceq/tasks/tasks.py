@@ -1,8 +1,21 @@
+import boto3
+import re
+import pkg_resources
+import datetime
+
+from itertools import compress
+from tempfile import mkdtemp
+from shutil import rmtree
+from os.path import join
+from os import mkdir
+from lxml import etree
+from subprocess import check_call, CalledProcessError
+
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
 from bson.objectid import ObjectId
-#from json import loads, dumps
+from json import loads, dumps
 import logging
 import requests
 import jinja2
@@ -12,13 +25,16 @@ from config import alma_url
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY
 from celeryconfig import ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, IR_NOTIFICATION_EMAIL
-from celeryconfig import REST_ENDPOINT, QUEUE_NAME
+from celeryconfig import REST_ENDPOINT, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
 
 app = Celery()
 app.config_from_object(celeryconfig)
+
+s3 = boto3.resource("s3")
+s3_bucket = 'ul-bagit'
 
 
 #Example task
@@ -30,6 +46,191 @@ def add(x, y):
     """
     result = x + y
     return result
+
+@task()
+def get_mmsid(bag):
+    """ get the mmsid from end of bag name """
+    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
+    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
+        return mmsid
+    return None
+
+def get_bib_record(mmsid):
+    """ bib record includes organization and document type """
+    try:
+        result = requests.get(alma_url.format(mmsid, ALMA_KEY))
+        if result.status_code == requests.codes.ok:
+            return result.content
+        else:
+            logging.error(result.content)
+            return {"error": "Alma server returned code: {0}".format(result.status_code)}
+    except:
+        logging.error("Alma Connection Error")
+        return {"error": "Alma Connection Error - try again later."}
+
+def list_s3_files(bag_name):
+    """ retrieves list of files (.pdf and .txt only) that are ready for ingest """
+    s3_bucket='ul-bagit'
+    s3_destination='private/shareok/{0}/data/'.format(bag_name)
+    s3 = boto3.client('s3')
+    files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
+    #return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
+    return [f for f in files if f.endswith((".pdf", ".txt"))]
+
+
+def marc_xml_to_dc_xml(marc_xml):
+    """ returns dublin core xml from marc xml """
+    xml_path = pkg_resources.resource_filename(__name__, 'xslt/marc2dspacedc.xsl')
+    marc2dc_xslt = etree.parse(xml_path)
+    transform = etree.XSLT(marc2dc_xslt)
+    return transform(marc_xml)
+
+
+def validate_marc(marc_xml):
+    """ validates that MARC record doesn't contain structural errors according to the specified schema """
+    xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
+    schema = etree.XMLSchema(etree.fromstring(xml))
+    parser = etree.XMLParser(schema=schema)
+    return etree.fromstring(etree.tostring(marc_xml), parser)
+
+
+def bib_to_dc(bib_record):
+    """ returns dc as string from bib_record """
+    return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
+
+def get_marc_from_bib(bib_record):
+    """ returns marc xml from bib record string"""
+    record = etree.fromstring(bib_record).find("record")
+    record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
+    return etree.ElementTree(record)
+
+files = list_s3_files("bag_name")
+bib_record = get_bib_record(get_mmsid("bag"))
+dc = bib_to_dc(bib_record)
+
+@task()
+def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
+    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace """
+    tempdir = mkdtemp(prefix="dspaceq_")
+    for index, bag in enumerate(bag_details):
+        bag_dir = join(tempdir, "item_{0}".format(index))
+        mkdir(bag_dir)
+        for file in bag["files"]:
+            filename = file.split("/")[-1]
+            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_0", filename))
+        with open(join(tempdir, "item_0", "contents"),"w") as f:
+            filenames = [file.split("/")[-1] for file in files]
+            f.write("\n".join(filenames))
+            f.write("\ndublin_core.xml")
+        with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
+            f.write(bag["metadata"])
+    try:
+        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+    except CalledProcessError as e:
+        print("Failed to ingest: {0}".format(bag_details))
+        print("Error: {0}".format(e))
+        return {"Error": "Failed to ingest: {0}".format(bag_details)}
+    finally:
+        rmtree(tempdir)
+
+@task()
+def guess_collection(bib_record):
+    """ attempts to determine collection based off of marc21 tag 502 in Alma record """
+    default_org = "OU"
+    default_type = "THESIS"
+    orgs = {"university of oklahoma": "OU"}
+    types = {"thesis": "THESIS",
+             "theses": "THESIS",
+             "dissertation": "DISSERTATION",
+             "dissertations": "DISSERTATION"}
+    collections = {"OU_THESIS": "11244/23528",
+                   "OU_DISSERTATION": "11244/10476"}
+    tree = etree.XML(bib_record)
+    sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
+    use_org = default_org
+    use_type = default_type
+    if sub502 is not None:
+        text = sub502.text.lower()
+    for org_key in orgs.keys():
+        if org_key in text:
+            use_org = orgs[org_key]
+            break
+    for type_key in types.keys():
+        if type_key in text:
+            use_type = types[type_key]
+            break
+    return collections["{0}_{1}".format(use_org, use_type)]
+
+collection = guess_collection(bib_record)
+collection
+
+@task()
+def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
+    """
+    Ingest a bagged thesis or dissertation into dspace
+
+    args:
+       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+       collection (string); dspace collection id to load into - if blank, will determine from Alma
+       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
+    """
+
+    if bag == "":
+        # Ingest requested items (bags) not yet ingested
+        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
+    else:
+        bags = [bag]
+
+    if bags == []:
+        return "No items found ready for ingest"
+
+    collections = defaultdict(list)
+    failed = {}
+    # files to include in ingest
+    for bag in bags:
+        files = list_s3_files(bag)
+        logging.info("Using files: {0}".format(files))
+
+        mmsid = get_mmsid(bag)
+        bib_record = get_bib_record(mmsid)
+        dc = bib_to_dc(bib_record)
+
+        if collection == "":
+            if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
+                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
+            else:
+                logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
+                failed[bag] = bib_record  # failed - pass along error message
+        else:
+            collections[collection].append({bag: {"files": files, "metadata": dc}})
+
+    update_alma = signature(
+        "dspaceq.tasks.tasks.update_alma_url_field",
+        queue=QUEUE_NAME
+    )
+    update_catalog = signature(
+        "dspaceq.tasks.tasks.update_catalog",
+        queue=QUEUE_NAME
+    )
+    send_email = signature(
+        "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
+        queue=QUEUE_NAME
+    )
+    for collection in collections.keys():
+        collection_bags = [x.keys()[0] for x in collections[collection]]
+        items = collections[collection]
+        ingest = signature(
+            "libtoolsq.tasks.tasks.awsDissertation",
+            queue="test-queue",
+            kwargs={"dspaceapiurl": dspace_endpoint,
+                    "collectionhandle": collection,
+                    "items": items
+                    }
+        )
+        logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
+        chain = (ingest | group(update_alma, update_catalog, send_email))
+        chain.delay()
+    return {"Kicked off ingest": bags, "failed": failed}
 
 
 @task()
@@ -78,66 +279,6 @@ def notify_etd_missing_fields():
     logging.info("No missing attributes - no notification email")
     return "No Missing Details"
 
-
-@task()
-def ingest_thesis_dissertation(bag="", collection="", dspace_endpoint=REST_ENDPOINT):
-    """
-    Ingest a bagged thesis or dissertation into dspace
-
-    args:
-       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will determine from Alma
-       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
-    """
-
-    if collection == "":
-        mmsid = get_mmsid(bag)
-        bib_record = get_bib_record(mmsid)
-        if type(bib_record) is not dict:
-            collection = guess_collection(bib_record)
-        else:
-            logging.error("failed to get bib_record to determine")
-            return bib_record  # failed - pass along error message
-
-    if bag == "":
-        # Ingest requested items (bags) not yet ingested
-        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
-    else:
-        bags = [bag]
-
-    logging.info("Processing bag(s): {0}\nCollection: {1}".format(bags, collection))
-
-    items = []
-    # files to include in ingest
-    for bag in bags:
-        files = list_s3_files(bag)
-        logging.info("Using files: {0}".format(files))
-
-        mmsid = get_mmsid(bag)
-        dc = bib_to_dc(get_bib_record(mmsid))
-
-        items.append({bag: {"files": files, "metadata": dc}})
-
-    ingest = signature(
-            "libtoolsq.tasks.tasks.awsDissertation", 
-            queue="shareok-repotools-prod-workerq",
-            kwargs={"dspaceapiurl":dspace_endpoint, "collectionhandle":collection, "items":items}
-            )
-    update_alma = signature(
-        "dspaceq.tasks.tasks.update_alma_url_field",
-        queue=QUEUE_NAME
-    )
-    update_catalog = signature(
-        "dspaceq.tasks.tasks.update_catalog",
-        queue=QUEUE_NAME
-    )
-    send_email = signature(
-        "emailq.tasks.tasks.notify_dspace_etd_loaded",
-        queue=QUEUE_NAME
-    )
-    chain = (ingest | group(update_alma, update_catalog, send_email))
-    chain.delay()
-    return "Kicked off ingest for: {0}".format(bag)
 
 
 @task()
