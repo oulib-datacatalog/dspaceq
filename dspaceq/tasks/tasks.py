@@ -33,6 +33,9 @@ logging.basicConfig(level=logging.INFO)
 app = Celery()
 app.config_from_object(celeryconfig)
 
+s3 = boto3.resource("s3")
+s3_bucket = 'ul-bagit'
+
 #Example task
 @task()
 def add(x, y):
@@ -55,7 +58,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             filename = file.split("/")[-1]
             s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_0", filename))
         with open(join(tempdir, "item_0", "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in files]
+            filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
             f.write("\ndublin_core.xml")
         with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
