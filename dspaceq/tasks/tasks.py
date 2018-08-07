@@ -33,10 +33,6 @@ logging.basicConfig(level=logging.INFO)
 app = Celery()
 app.config_from_object(celeryconfig)
 
-s3 = boto3.resource("s3")
-s3_bucket = 'ul-bagit'
-
-
 #Example task
 @task()
 def add(x, y):
@@ -47,66 +43,6 @@ def add(x, y):
     result = x + y
     return result
 
-@task()
-def get_mmsid(bag):
-    """ get the mmsid from end of bag name """
-    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
-    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
-        return mmsid
-    return None
-
-def get_bib_record(mmsid):
-    """ bib record includes organization and document type """
-    try:
-        result = requests.get(alma_url.format(mmsid, ALMA_KEY))
-        if result.status_code == requests.codes.ok:
-            return result.content
-        else:
-            logging.error(result.content)
-            return {"error": "Alma server returned code: {0}".format(result.status_code)}
-    except:
-        logging.error("Alma Connection Error")
-        return {"error": "Alma Connection Error - try again later."}
-
-def list_s3_files(bag_name):
-    """ retrieves list of files (.pdf and .txt only) that are ready for ingest """
-    s3_bucket='ul-bagit'
-    s3_destination='private/shareok/{0}/data/'.format(bag_name)
-    s3 = boto3.client('s3')
-    files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
-    #return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
-    return [f for f in files if f.endswith((".pdf", ".txt"))]
-
-
-def marc_xml_to_dc_xml(marc_xml):
-    """ returns dublin core xml from marc xml """
-    xml_path = pkg_resources.resource_filename(__name__, 'xslt/marc2dspacedc.xsl')
-    marc2dc_xslt = etree.parse(xml_path)
-    transform = etree.XSLT(marc2dc_xslt)
-    return transform(marc_xml)
-
-
-def validate_marc(marc_xml):
-    """ validates that MARC record doesn't contain structural errors according to the specified schema """
-    xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
-    schema = etree.XMLSchema(etree.fromstring(xml))
-    parser = etree.XMLParser(schema=schema)
-    return etree.fromstring(etree.tostring(marc_xml), parser)
-
-
-def bib_to_dc(bib_record):
-    """ returns dc as string from bib_record """
-    return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
-
-def get_marc_from_bib(bib_record):
-    """ returns marc xml from bib record string"""
-    record = etree.fromstring(bib_record).find("record")
-    record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
-    return etree.ElementTree(record)
-
-files = list_s3_files("bag_name")
-bib_record = get_bib_record(get_mmsid("bag"))
-dc = bib_to_dc(bib_record)
 
 @task()
 def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
@@ -133,36 +69,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     finally:
         rmtree(tempdir)
 
-@task()
-def guess_collection(bib_record):
-    """ attempts to determine collection based off of marc21 tag 502 in Alma record """
-    default_org = "OU"
-    default_type = "THESIS"
-    orgs = {"university of oklahoma": "OU"}
-    types = {"thesis": "THESIS",
-             "theses": "THESIS",
-             "dissertation": "DISSERTATION",
-             "dissertations": "DISSERTATION"}
-    collections = {"OU_THESIS": "11244/23528",
-                   "OU_DISSERTATION": "11244/10476"}
-    tree = etree.XML(bib_record)
-    sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
-    use_org = default_org
-    use_type = default_type
-    if sub502 is not None:
-        text = sub502.text.lower()
-    for org_key in orgs.keys():
-        if org_key in text:
-            use_org = orgs[org_key]
-            break
-    for type_key in types.keys():
-        if type_key in text:
-            use_type = types[type_key]
-            break
-    return collections["{0}_{1}".format(use_org, use_type)]
-
-collection = guess_collection(bib_record)
-collection
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
