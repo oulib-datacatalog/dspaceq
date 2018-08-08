@@ -7,6 +7,7 @@ from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
 from json import dumps
+from collections import defaultdict
 
 import jinja2
 
@@ -36,7 +37,7 @@ def add(x, y):
 
 @task()
 def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
-    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace """
+    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace, then performs the ingest """
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
         bag_dir = join(tempdir, "item_{0}".format(index))
@@ -118,7 +119,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation",
             queue="test-queue",
-            kwargs={"dspaceapiurl": dspace_endpoint, 
+            kwargs={"dspaceapiurl": rest_endpoint, 
                     "collectionhandle": collection,
                     "items": items
                     }
