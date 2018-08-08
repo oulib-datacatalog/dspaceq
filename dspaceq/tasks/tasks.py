@@ -6,12 +6,17 @@ from subprocess import check_call, CalledProcessError
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
-from json import dumps
 from collections import defaultdict
+from bson.objectid import ObjectId
+from lxml import etree
 
+import boto3
+import logging
+import requests
 import jinja2
 
 from utils import *
+from config import alma_url
 
 from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 import celeryconfig
@@ -49,7 +54,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
             f.write("\ndublin_core.xml")
-        with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
+        with open(join(tempdir, "item_0", "dublin_coe.xml"), "w") as f:
             f.write(bag["metadata"])
     try:
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
