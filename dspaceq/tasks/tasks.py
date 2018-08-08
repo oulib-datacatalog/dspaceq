@@ -1,31 +1,18 @@
-import boto3
-import re
-import pkg_resources
-import datetime
-
-from itertools import compress
 from tempfile import mkdtemp
 from shutil import rmtree
 from os.path import join
 from os import mkdir
-from lxml import etree
 from subprocess import check_call, CalledProcessError
-
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
-from bson.objectid import ObjectId
-from json import loads, dumps
-import logging
-import requests
+from json import dumps
+
 import jinja2
 
 from utils import *
-from config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY
-from celeryconfig import ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, IR_NOTIFICATION_EMAIL
-from celeryconfig import REST_ENDPOINT, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
+from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -131,7 +118,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation",
             queue="test-queue",
-            kwargs={"dspaceapiurl": dspace_endpoint,
+            kwargs={"dspaceapiurl": dspace_endpoint, 
                     "collectionhandle": collection,
                     "items": items
                     }
