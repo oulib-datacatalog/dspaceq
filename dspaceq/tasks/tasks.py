@@ -119,7 +119,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation",
             queue="test-queue",
-            kwargs={"dspaceapiurl": rest_endpoint, 
+            kwargs={"dspaceapiurl": REST_ENDPOINT, 
                     "collectionhandle": collection,
                     "items": items
                     }
