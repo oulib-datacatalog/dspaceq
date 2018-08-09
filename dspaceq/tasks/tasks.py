@@ -10,6 +10,9 @@ from collections import defaultdict
 from bson.objectid import ObjectId
 from lxml import etree
 
+import pandas as pd
+import numpy as np
+
 import boto3
 import logging
 import requests
@@ -43,7 +46,20 @@ def add(x, y):
 
 @task()
 def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
-    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace, then performs the ingest """
+    """ Generates temporary directory and url for the bags to be downloaded from
+        S3, prior to ingest into DSpace, then performs the ingest
+
+        args: bag_details(string), bag name #? and metadata for ingest
+              collection (string); dspace collection id to load into - if blank,
+                                   will determine from Alma
+              dspace_endpoint (string); url to shareok / commons API endpoint
+              - example: https://test.shareok.org/rest
+    """
+    df = pd.DataFrame(bag_details, columns = ['bag', 'handle'])
+
+    #map_table = pd.pivot_table(df,index=['bag'],values=['handle'])
+
+
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
         bag_dir = join(tempdir, "item_{0}".format(index))
@@ -51,14 +67,30 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         for file in bag["files"]:
             filename = file.split("/")[-1]
             s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_0", filename))
-        with open(join(tempdir, "item_0", "contents"),"w") as f:
+        with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
             filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
-            f.write("\ndublin_core.xml")
-        with open(join(tempdir, "item_0", "dublin_coe.xml"), "w") as f:
+        with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
             f.write(bag["metadata"])
+        with open('{0}/mapfile'.format(tempdir)) as f:
+            results = []
+            for row in f.read().split('\n'):
+                item_match = df.match('bag:', 'handle')
+                item_index = item_match.group('bag')
+                handle = item_match.group('handle')
+
+                item_index, handle = row.split("")
+                results.append(item_index,handle)
+
+        return {"Success": results}
+
+
+
+
+
     try:
-        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
+        collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
@@ -74,8 +106,9 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
     args:
        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will determine from Alma
-       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
+       collection (string); dspace collection id to load into - if blank, will
+       determine from Alma dspace_endpoint (string); url to shareok / commons
+       API endpoint - example: https://test.shareok.org/rest
     """
 
     if bag == "":
@@ -99,8 +132,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         dc = bib_to_dc(bib_record)
 
         if collection == "":
-            if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
-                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
+            if type(bib_record) is not dict: #If this is a dictionary, we failed
+                                             #to get a valid bib_record
+                collections[guess_collection(bib_record)].append({bag: {"files":
+                    files, "metadata": dc}})
             else:
                 logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
                 failed[bag] = bib_record  # failed - pass along error message
@@ -125,7 +160,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation",
             queue="test-queue",
-            kwargs={"dspaceapiurl": REST_ENDPOINT, 
+            kwargs={"dspaceapiurl": REST_ENDPOINT,
                     "collectionhandle": collection,
                     "items": items
                     }
@@ -149,7 +184,7 @@ def notify_etd_missing_fields():
       Missing Details:{% for field in bags[bag].missing %}
         {{ field }}{% endfor %}
       Files:{% for etd_file in bags[bag].files %}
-        {{ etd_file }}{% endfor %}  
+        {{ etd_file }}{% endfor %}
     {% endfor %}
     """
 
@@ -164,7 +199,7 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag] = {}
                 bags_missing_details[bag]['mmsid'] = mmsid
                 bags_missing_details[bag]['missing'] = items
-                bags_missing_details[bag]['files'] = ["https://s3.amazonaws.com/{0}".format(x) for x in list_s3_files(bag)]
+                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}'.format(x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
@@ -205,8 +240,8 @@ def notify_dspace_etd_loaded(args):
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
         Requester: {{ requested_details[request].name }}
-        Email: {{ requested_details[request].email }} 
-        URL: {{ requested_details[request].url }}  
+        Email: {{ requested_details[request].email }}
+        URL: {{ requested_details[request].url }}
         {% endfor %}
         """
         env = jinja2.Environment()
@@ -226,9 +261,9 @@ def notify_dspace_etd_loaded(args):
 
 def _update_alma_url_field(bib_record, url):
     """ Updates the url text for the first instance of tag 856(ind1=4, ind2=0) and returns as string
-        
+
         args:
-          bib_record (string); bib record xml 
+          bib_record (string); bib record xml
           url (string); url to place in the record
     """
     tree = etree.XML(bib_record)
@@ -272,7 +307,8 @@ def update_alma_url_field(args, notify=True):
             if result.status_code == requests.codes.ok:
                 old_url = get_alma_url_field(result.content)
                 new_xml = _update_alma_url_field(result.content, url)
-                update_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
+                update_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY),
+                    data=new_xml, headers={"content-type": "application/xml"})
                 if update_result.status_code == requests.codes.ok:
                     logging.info("Alma record updated for mmsid: {0}".format(mmsid))
                     status['success'].append([bagname, url])
@@ -301,7 +337,7 @@ def update_datacatalog(args):
     """
     Adds ingested status into Data Catalog
     This is called by the ingest_thesis_dissertation task
-    
+
     args:
        {"success": {bagname: url}
     """
