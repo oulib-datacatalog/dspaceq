@@ -10,6 +10,10 @@ from collections import defaultdict
 from bson.objectid import ObjectId
 from lxml import etree
 
+from os import chown
+from os import chmod
+import grp
+
 import boto3
 import logging
 import requests
@@ -70,6 +74,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             f.write(bag_details[bag]["metadata"])
 
     try:
+        chmod(tempdir, 0o775)
+        chown(tempdir, -1, grp.getgrnam("tomcat").gr_gid)
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
