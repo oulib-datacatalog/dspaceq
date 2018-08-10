@@ -56,17 +56,18 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
+        print("bagtype: {0}, bag_val: {1}".format(type(bag), bag))
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        for file in bag["files"]:
+        for file in bag_details[bag]["files"]:
             filename = file.split("/")[-1]
             s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
         with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in bag["files"]]
+            filenames = [file.split("/")[-1] for file in bag_details[bag]["files"]]
             f.write("\n".join(filenames))
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-            f.write(bag["metadata"])
+            f.write(bag_details[bag]["metadata"])
 
     try:
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
