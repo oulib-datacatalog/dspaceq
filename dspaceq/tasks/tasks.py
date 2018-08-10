@@ -10,9 +10,6 @@ from collections import defaultdict
 from bson.objectid import ObjectId
 from lxml import etree
 
-import pandas as pd
-import numpy as np
-
 import boto3
 import logging
 import requests
@@ -49,48 +46,40 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(string), bag name #? and metadata for ingest
+        args: bag_details(dictionary), {"bag name": {"files: [...], "metadata:" "xml"}}
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
               - example: https://test.shareok.org/rest
     """
-    df = pd.DataFrame(bag_details, columns = ['bag', 'handle'])
 
-    #map_table = pd.pivot_table(df,index=['bag'],values=['handle'])
-
-
+    item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
+        item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
         for file in bag["files"]:
             filename = file.split("/")[-1]
-            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_0", filename))
+            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}", filename))
         with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
             filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
-        with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
+        with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
             f.write(bag["metadata"])
-        with open('{0}/mapfile'.format(tempdir)) as f:
-            results = []
-            for row in f.read().split('\n'):
-                item_match = df.match('bag:', 'handle')
-                item_index = item_match.group('bag')
-                handle = item_match.group('handle')
-
-                item_index, handle = row.split("")
-                results.append(item_index,handle)
-
-        return {"Success": results}
-
-
-
-
 
     try:
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+
+        with open('{0}/mapfile'.format(tempdir)) as f:
+            results = []
+            for row in f.read().split('\n'):
+
+                item_index, handle = row.split(" ")
+                results.append((item_match[item_index], handle))
+
+        return {"Success": results}
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
