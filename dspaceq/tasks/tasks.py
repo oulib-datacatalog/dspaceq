@@ -1,21 +1,16 @@
-import boto3
-import re
-import pkg_resources
-import datetime
-
-from itertools import compress
 from tempfile import mkdtemp
 from shutil import rmtree
 from os.path import join
 from os import mkdir
-from lxml import etree
 from subprocess import check_call, CalledProcessError
-
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
+from collections import defaultdict
 from bson.objectid import ObjectId
-from json import loads, dumps
+from lxml import etree
+
+import boto3
 import logging
 import requests
 import jinja2
@@ -23,9 +18,8 @@ import jinja2
 from utils import *
 from config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY
-from celeryconfig import ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, IR_NOTIFICATION_EMAIL
-from celeryconfig import REST_ENDPOINT, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
+from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +29,6 @@ app.config_from_object(celeryconfig)
 
 s3 = boto3.resource("s3")
 s3_bucket = 'ul-bagit'
-
 
 #Example task
 @task()
@@ -47,85 +40,46 @@ def add(x, y):
     result = x + y
     return result
 
-@task()
-def get_mmsid(bag):
-    """ get the mmsid from end of bag name """
-    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
-    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
-        return mmsid
-    return None
-
-def get_bib_record(mmsid):
-    """ bib record includes organization and document type """
-    try:
-        result = requests.get(alma_url.format(mmsid, ALMA_KEY))
-        if result.status_code == requests.codes.ok:
-            return result.content
-        else:
-            logging.error(result.content)
-            return {"error": "Alma server returned code: {0}".format(result.status_code)}
-    except:
-        logging.error("Alma Connection Error")
-        return {"error": "Alma Connection Error - try again later."}
-
-def list_s3_files(bag_name):
-    """ retrieves list of files (.pdf and .txt only) that are ready for ingest """
-    s3_bucket='ul-bagit'
-    s3_destination='private/shareok/{0}/data/'.format(bag_name)
-    s3 = boto3.client('s3')
-    files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
-    #return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
-    return [f for f in files if f.endswith((".pdf", ".txt"))]
-
-
-def marc_xml_to_dc_xml(marc_xml):
-    """ returns dublin core xml from marc xml """
-    xml_path = pkg_resources.resource_filename(__name__, 'xslt/marc2dspacedc.xsl')
-    marc2dc_xslt = etree.parse(xml_path)
-    transform = etree.XSLT(marc2dc_xslt)
-    return transform(marc_xml)
-
-
-def validate_marc(marc_xml):
-    """ validates that MARC record doesn't contain structural errors according to the specified schema """
-    xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
-    schema = etree.XMLSchema(etree.fromstring(xml))
-    parser = etree.XMLParser(schema=schema)
-    return etree.fromstring(etree.tostring(marc_xml), parser)
-
-
-def bib_to_dc(bib_record):
-    """ returns dc as string from bib_record """
-    return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
-
-def get_marc_from_bib(bib_record):
-    """ returns marc xml from bib record string"""
-    record = etree.fromstring(bib_record).find("record")
-    record.attrib['xmlns'] = "http://www.loc.gov/MARC21/slim"
-    return etree.ElementTree(record)
-
-files = list_s3_files("bag_name")
-bib_record = get_bib_record(get_mmsid("bag"))
-dc = bib_to_dc(bib_record)
 
 @task()
 def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
-    """ Generates temporary directory and url for the bags to be downloaded from S3, prior to ingest into DSpace """
+    """ Generates temporary directory and url for the bags to be downloaded from
+        S3, prior to ingest into DSpace, then performs the ingest
+
+        args: bag_details(dictionary), {"bag name": {"files: [...], "metadata:" "xml"}}
+              collection (string); dspace collection id to load into - if blank,
+                                   will determine from Alma
+              dspace_endpoint (string); url to shareok / commons API endpoint
+              - example: https://test.shareok.org/rest
+    """
+
+    item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
+        item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
         for file in bag["files"]:
             filename = file.split("/")[-1]
-            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_0", filename))
-        with open(join(tempdir, "item_0", "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in files]
+            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}", filename))
+        with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
+            filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
-            f.write("\ndublin_core.xml")
-        with open(join(tempdir, "item_0", "dublin_core.xml"), "w") as f:
+        with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
             f.write(bag["metadata"])
+
     try:
-        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
+        collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+
+        with open('{0}/mapfile'.format(tempdir)) as f:
+            results = []
+            for row in f.read().split('\n'):
+
+                item_index, handle = row.split(" ")
+                results.append((item_match[item_index], handle))
+
+        return {"Success": results}
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
@@ -133,36 +87,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     finally:
         rmtree(tempdir)
 
-@task()
-def guess_collection(bib_record):
-    """ attempts to determine collection based off of marc21 tag 502 in Alma record """
-    default_org = "OU"
-    default_type = "THESIS"
-    orgs = {"university of oklahoma": "OU"}
-    types = {"thesis": "THESIS",
-             "theses": "THESIS",
-             "dissertation": "DISSERTATION",
-             "dissertations": "DISSERTATION"}
-    collections = {"OU_THESIS": "11244/23528",
-                   "OU_DISSERTATION": "11244/10476"}
-    tree = etree.XML(bib_record)
-    sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
-    use_org = default_org
-    use_type = default_type
-    if sub502 is not None:
-        text = sub502.text.lower()
-    for org_key in orgs.keys():
-        if org_key in text:
-            use_org = orgs[org_key]
-            break
-    for type_key in types.keys():
-        if type_key in text:
-            use_type = types[type_key]
-            break
-    return collections["{0}_{1}".format(use_org, use_type)]
-
-collection = guess_collection(bib_record)
-collection
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
@@ -171,8 +95,9 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
     args:
        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will determine from Alma
-       dspace_endpoint (string); url to shareok / commons API endpoint - example: https://test.shareok.org/rest
+       collection (string); dspace collection id to load into - if blank, will
+       determine from Alma dspace_endpoint (string); url to shareok / commons
+       API endpoint - example: https://test.shareok.org/rest
     """
 
     if bag == "":
@@ -196,8 +121,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         dc = bib_to_dc(bib_record)
 
         if collection == "":
-            if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
-                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
+            if type(bib_record) is not dict: #If this is a dictionary, we failed
+                                             #to get a valid bib_record
+                collections[guess_collection(bib_record)].append({bag: {"files":
+                    files, "metadata": dc}})
             else:
                 logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
                 failed[bag] = bib_record  # failed - pass along error message
@@ -222,7 +149,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         ingest = signature(
             "libtoolsq.tasks.tasks.awsDissertation",
             queue="test-queue",
-            kwargs={"dspaceapiurl": dspace_endpoint,
+            kwargs={"dspaceapiurl": REST_ENDPOINT,
                     "collectionhandle": collection,
                     "items": items
                     }
@@ -246,7 +173,7 @@ def notify_etd_missing_fields():
       Missing Details:{% for field in bags[bag].missing %}
         {{ field }}{% endfor %}
       Files:{% for etd_file in bags[bag].files %}
-        {{ etd_file }}{% endfor %}  
+        {{ etd_file }}{% endfor %}
     {% endfor %}
     """
 
@@ -261,7 +188,7 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag] = {}
                 bags_missing_details[bag]['mmsid'] = mmsid
                 bags_missing_details[bag]['missing'] = items
-                bags_missing_details[bag]['files'] = ["https://s3.amazonaws.com/{0}".format(x) for x in list_s3_files(bag)]
+                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}'.format(x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
@@ -302,8 +229,8 @@ def notify_dspace_etd_loaded(args):
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
         Requester: {{ requested_details[request].name }}
-        Email: {{ requested_details[request].email }} 
-        URL: {{ requested_details[request].url }}  
+        Email: {{ requested_details[request].email }}
+        URL: {{ requested_details[request].url }}
         {% endfor %}
         """
         env = jinja2.Environment()
@@ -323,9 +250,9 @@ def notify_dspace_etd_loaded(args):
 
 def _update_alma_url_field(bib_record, url):
     """ Updates the url text for the first instance of tag 856(ind1=4, ind2=0) and returns as string
-        
+
         args:
-          bib_record (string); bib record xml 
+          bib_record (string); bib record xml
           url (string); url to place in the record
     """
     tree = etree.XML(bib_record)
@@ -369,7 +296,8 @@ def update_alma_url_field(args, notify=True):
             if result.status_code == requests.codes.ok:
                 old_url = get_alma_url_field(result.content)
                 new_xml = _update_alma_url_field(result.content, url)
-                update_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY), data=new_xml, headers={"content-type": "application/xml"})
+                update_result = requests.put(url=alma_url.format(mmsid, ALMA_RW_KEY),
+                    data=new_xml, headers={"content-type": "application/xml"})
                 if update_result.status_code == requests.codes.ok:
                     logging.info("Alma record updated for mmsid: {0}".format(mmsid))
                     status['success'].append([bagname, url])
@@ -398,7 +326,7 @@ def update_datacatalog(args):
     """
     Adds ingested status into Data Catalog
     This is called by the ingest_thesis_dissertation task
-    
+
     args:
        {"success": {bagname: url}
     """
