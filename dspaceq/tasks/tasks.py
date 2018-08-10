@@ -61,7 +61,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         mkdir(bag_dir)
         for file in bag["files"]:
             filename = file.split("/")[-1]
-            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}", filename))
+            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
         with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
             filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
