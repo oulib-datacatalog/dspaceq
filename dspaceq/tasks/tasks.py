@@ -75,7 +75,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
 
     try:
         chmod(tempdir, 0o775)
-        chown(tempdir, -1, grp.getgrnam("tomcat").gr_gid)
+        check_call(["chgrp", "-R", "tomcat", tempdir])
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
