@@ -82,9 +82,9 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         with open('{0}/mapfile'.format(tempdir)) as f:
             results = []
             for row in f.read().split('\n'):
-
-                item_index, handle = row.split(" ")
-                results.append((item_match[item_index], handle))
+                if row:
+                    item_index, handle = row.split(" ")
+                    results.append((item_match[item_index], handle))
 
         return {"Success": results}
     except CalledProcessError as e:
