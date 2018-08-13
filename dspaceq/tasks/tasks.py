@@ -59,8 +59,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
-    chmod(tempdir, 0o775)
-    chown(tempdir, -1, grp.getgrnam("tomcat").gr_gid)
     for index, bag in enumerate(bag_details):
         print("bagtype: {0}, bag_val: {1}".format(type(bag), bag))
         item_match["item_{0}".format(index)] = bag
@@ -76,6 +74,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             f.write(bag_details[bag]["metadata"].encode("utf-8"))
 
     try:
+        chmod(tempdir, 0o775)
+        chown(tempdir, -1, grp.getgrnam("tomcat").gr_gid)
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
