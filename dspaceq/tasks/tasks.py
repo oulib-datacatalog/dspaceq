@@ -92,7 +92,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         print("Error: {0}".format(e))
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
     finally:
-        rmtree(tempdir)
+        #rmtree(tempdir)
+        pass
 
 
 @task()
