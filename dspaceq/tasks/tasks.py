@@ -77,10 +77,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             f.write(bag["metadata"].encode("utf-8"))
 
     try:
-        
-        output = check_output(
-            ['ingest',bag_key , 'status'],
-                stderr=STDOUT).decode('UTF-8')
                 
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
@@ -99,9 +95,16 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
+        return e
         
-        if ('failed' in output or 'error' in output):
-            return e
+        if ('failed' in e or 'error' in e):
+            output = check_output(e,universal_newline=True, shell=True,
+            stderr=STDOUT).decode('UTF-8')
+            return output
+            print(output)
+            
+            
+            
     finally:
        
         rmtree(tempdir)
