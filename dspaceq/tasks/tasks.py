@@ -99,8 +99,11 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         return e
         
         if ('failed' in e or 'error' in e):
-            output = check_output(e,universal_newline=True, shell=True,
-            stderr=STDOUT).decode('UTF-8')
+
+
+            output = check_output(["/bin/sh", "-c",
+                "ls -l non_existent_file ; exit 0"], shell=True,
+                stderr=STDOUT).decode('UTF-8')stderr=STDOUT).decode('UTF-8')
             return output
             print(output)
             
