@@ -102,7 +102,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         
         if ('failed' in e or 'error' in e):         
 		
-   finally:
+    finally:
         rmtree(tempdir)
 
 
