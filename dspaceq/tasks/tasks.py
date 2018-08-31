@@ -89,6 +89,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
         return {"Success": results}
+        output = check_output("bag_key", shell=True).decode('UTF-8')
+        print(output)
         
 
        
@@ -101,13 +103,13 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         if ('failed' in e or 'error' in e):
 
 
-            output = check_output(["/bin/sh", "-c",
-                "ls -l non_existent_file ; exit 0"], shell=True,
-                stderr=STDOUT).decode('UTF-8')stderr=STDOUT).decode('UTF-8')
-            return output
-            print(output)
+
+    
+     
+      
+
             
-            
+         
             
     finally:
        
