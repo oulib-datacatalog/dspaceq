@@ -100,7 +100,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
         return e
         
-        if ('failed' in e or 'error' in e):         
+           
 		
     finally:
         rmtree(tempdir)
