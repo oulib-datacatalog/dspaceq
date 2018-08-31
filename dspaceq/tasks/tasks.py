@@ -2,7 +2,8 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from os.path import join
 from os import mkdir
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, check_output, STDOUT
+
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
@@ -75,8 +76,9 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             f.write(bag_details[bag]["metadata"].encode("utf-8"))
 
     try:
-        #check_call(["chmod", "-R", "0775", tempdir])
-        #check_call(["chgrp", "-R", "tomcat", tempdir])
+        check_call(["chmod", "-R", "0775", tempdir])
+        check_call(["chgrp", "-R", "tomcat", tempdir])
+          
         check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
@@ -86,13 +88,26 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-
         return {"Success": results}
+        
+
+       
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
+        return e
+        
+        if ('failed' in e or 'error' in e):
+            output = check_output(e,universal_newline=True, shell=True,
+            stderr=STDOUT).decode('UTF-8')
+            return output
+            print(output)
+            
+            
+            
     finally:
+       
         rmtree(tempdir)
 
 
