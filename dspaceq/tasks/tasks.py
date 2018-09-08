@@ -88,20 +88,19 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-       return {"Success": results}
+       	    return {"Success": results}
        output = (["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
             collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
-       print(output)
-        
+      
+    print(output)  
 
-       
-    except CalledProcessError as e:
+    except:
+	CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
         return e
         
-           
 		
    # finally:
         #rmtree(tempdir)
