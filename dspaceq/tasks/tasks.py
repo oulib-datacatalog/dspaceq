@@ -72,7 +72,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             filenames = [file.split("/")[-1] for file in bag_details[bag]["files"]]
             f.write("\n".join(filenames))
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-        print(bag_details[bag])
+	    print(bag_details[bag])
             f.write(bag_details[bag]["metadata"].encode("utf-8"))
 
     try:
@@ -87,8 +87,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             for row in f.read().split('\n'):
                 if row:
                     item_index, handle = row.split(" ")
-                    results.append((item_match[item_index], handle)
-            return {"Success": results}
+                    results.append((item_match[item_index], handle))
+                return {"Success": results}
 
         #output = (["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         #    collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
