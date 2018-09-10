@@ -88,7 +88,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-                return {"Success": results}
+            return {"Success": results}
 
         #output = (["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
         #    collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
