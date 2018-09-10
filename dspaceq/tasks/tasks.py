@@ -73,7 +73,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             f.write("\n".join(filenames))
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
             print(bag_details[bag])
-                f.write(bag_details[bag]["metadata"].encode("utf-8"))
+            f.write(bag_details[bag]["metadata"].encode("utf-8"))
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
