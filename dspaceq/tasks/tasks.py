@@ -61,7 +61,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
-        print("bagtype: {0}, bag_val: {1}".format(type(bag), bag))
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
@@ -80,7 +79,7 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         check_call(["chgrp", "-R", "tomcat", tempdir])
 
         output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
-            collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)]).decode("utf-8", "ignore")
+            collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
         with open('{0}/mapfile'.format(tempdir)) as f:
             results = []
@@ -90,20 +89,18 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                     results.append((item_match[item_index], handle))
         return {"Success": results}
 
-        #output = (["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
-        #    collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
-        print(output)
 
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
+        print(output)
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
-        return e
 
 
-    finally:
-        rmtree(tempdir)
+
+    #finally:
+    #    rmtree(tempdir)
 
 
 @task()
