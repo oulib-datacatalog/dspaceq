@@ -101,8 +101,8 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
         raise
 
 
-    finally:
-        rmtree(tempdir)
+#    finally:
+#        rmtree(tempdir)
 
 
 @task()
