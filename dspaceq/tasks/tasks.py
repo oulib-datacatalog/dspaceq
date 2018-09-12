@@ -94,13 +94,15 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
+   
+    else:    
         print(output)
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
+        raise
 
 
-
-    #finally:
-    #    rmtree(tempdir)
+    finally:
+        rmtree(tempdir)
 
 
 @task()
