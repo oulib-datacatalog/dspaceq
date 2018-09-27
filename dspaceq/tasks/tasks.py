@@ -47,7 +47,7 @@ def add(x, y):
 
 
 @task()
-def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
+def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
@@ -164,11 +164,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
         ingest = signature(
-            "libtoolsq.tasks.tasks.awsDissertation",
-            queue="test-queue",
-            kwargs={"dspaceapiurl": REST_ENDPOINT,
-                    "collectionhandle": collection,
-                    "items": items
+            "dspaceq.tasks.tasks.dspace_ingest",
+            queue=QUEUE_NAME,
+            kwargs={"collection": collection,
+                    "bag": items
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
