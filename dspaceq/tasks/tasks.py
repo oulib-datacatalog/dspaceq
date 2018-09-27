@@ -2,7 +2,8 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from os.path import join
 from os import mkdir
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, check_output, STDOUT
+
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
@@ -46,7 +47,7 @@ def add(x, y):
 
 
 @task()
-def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
+def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
@@ -60,7 +61,6 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     for index, bag in enumerate(bag_details):
-        print("bagtype: {0}, bag_val: {1}".format(type(bag), bag))
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
@@ -71,13 +71,15 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
             filenames = [file.split("/")[-1] for file in bag_details[bag]["files"]]
             f.write("\n".join(filenames))
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
+            print(bag_details[bag])
             f.write(bag_details[bag]["metadata"].encode("utf-8"))
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
-        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
-        collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+
+        output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
+            collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
         with open('{0}/mapfile'.format(tempdir)) as f:
             results = []
@@ -85,14 +87,22 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-
         return {"Success": results}
+
+
+
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
+   
+    else:    
+        print(output)
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
-    finally:
-        rmtree(tempdir)
+#       raise
+
+
+#   finally:
+#       rmtree(tempdir)
 
 
 @task()
@@ -154,11 +164,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
         ingest = signature(
-            "libtoolsq.tasks.tasks.awsDissertation",
-            queue="test-queue",
-            kwargs={"dspaceapiurl": REST_ENDPOINT,
-                    "collectionhandle": collection,
-                    "items": items
+            "dspaceq.tasks.tasks.dspace_ingest",
+            queue=QUEUE_NAME,
+            kwargs={"collection": collection,
+                    "bag_details": items
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
