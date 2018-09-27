@@ -167,7 +167,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             "dspaceq.tasks.tasks.dspace_ingest",
             queue=QUEUE_NAME,
             kwargs={"collection": collection,
-                    "bag": items
+                    "bag_details": items
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
