@@ -57,7 +57,8 @@ def report_embargoed_items(beg_date, end_date):
     try:
         engine = create_engine(URL(**pg_db))
         conn = engine.connect()
-    except sqlalchemy.exc.OperationalError:
+    except sqlalchemy.exc.OperationalError as e:
+        logging.error("Error with DB connection (from dspaceq/reports)\n{0}".format(e))
         return {"ERROR": "Issue connecting to database, try again in a few minutes")
 
     res_items = conn.execute(text(startdate_query), beg_date=beg_date, end_date=end_date).fetchall()
