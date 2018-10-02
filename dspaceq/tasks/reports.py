@@ -56,7 +56,7 @@ def report_embargoed_items(beg_date, end_date):
     """
     
     # regular expression to match YYYY-MM-DD
-    re_datematch = "([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))"
+    re_datematch = "^([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))$"
 
     if not re.match(re_datematch, beg_date):
         return {"ERROR": "beg_date does not use YYYY-MM-DD format"}
