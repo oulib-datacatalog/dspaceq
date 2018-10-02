@@ -1,6 +1,7 @@
 from celery.task import task
 
 import logging
+import re
 
 from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
 import celeryconfig
@@ -53,7 +54,15 @@ def report_embargoed_items(beg_date, end_date):
        beg_date (string): 'YYYY-MM-DD'
        end_date (string): 'YYYY-MM-DD'
     """
-    # TODO: sanitize dates
+    
+    # regular expression to match YYYY-MM-DD
+    re_datematch = "([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))"
+
+    if not re.match(re_datematch, beg_date):
+        return {"ERROR": "beg_date does not use YYYY-MM-DD format"}
+    if not re.match(re_datematch. end_date):
+        return {"ERROR": "end_date does not use YYYY-MM-DD format"}
+
     # TODO: check that end_date is greater than beg_date
     try:
         engine = create_engine(URL(**pg_db))
