@@ -53,6 +53,7 @@ def report_embargoed_items(beg_date, end_date):
        beg_date (string): 'YYYY-MM-DD'
        end_date (string): 'YYYY-MM-DD'
     """
+    # TODO: sanitize dates
     # TODO: check that end_date is greater than beg_date
     try:
         engine = create_engine(URL(**pg_db))
@@ -61,7 +62,12 @@ def report_embargoed_items(beg_date, end_date):
         logging.error("Error with DB connection (from dspaceq/reports)\n{0}".format(e))
         return {"ERROR": "Issue connecting to database, try again in a few minutes")
 
-    res_items = conn.execute(text(startdate_query), beg_date=beg_date, end_date=end_date).fetchall()
+    try:
+        res_items = conn.execute(text(startdate_query), beg_date=beg_date, end_date=end_date).fetchall()
+    except sqlalchemy.exc.DataError as e:
+        logging.error("Potential sql injection attempt\n{0}".format(e))
+        return {"ERROR": "Could not process supplied dates"}
+
     results = []
     for item in res_items:
         handle, item_id, start_date = item
