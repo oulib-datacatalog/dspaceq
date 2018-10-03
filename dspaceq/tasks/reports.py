@@ -60,7 +60,7 @@ def report_embargoed_items(beg_date, end_date):
 
     if not re.match(re_datematch, beg_date):
         return {"ERROR": "beg_date does not use YYYY-MM-DD format"}
-    if not re.match(re_datematch. end_date):
+    if not re.match(re_datematch, end_date):
         return {"ERROR": "end_date does not use YYYY-MM-DD format"}
 
     # TODO: check that end_date is greater than beg_date
