@@ -81,6 +81,13 @@ def report_embargoed_items(beg_date, end_date):
     for item in res_items:
         handle, item_id, start_date = item
         res_meta = dict(conn.execute(text(metadata_query), item_id=item_id, fields=(AUTHOR, URI, TITLE, DEPARTMENT)).fetchall())
-        results.append([handle, res_meta[AUTHOR], res_meta[TITLE], res_meta[DEPARTMENT], start_date.isoformat()])
+        results.append(
+            [handle, 
+             res_meta.get(AUTHOR, "Unkown"),
+             res_meta.get(TITLE, "Unkown"),
+             res_meta.get(DEPARTMENT, "Unkown"),
+             start_date.isoformat()
+            ]
+        )
     return results
 
