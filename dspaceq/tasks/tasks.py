@@ -60,19 +60,22 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
+    if type(bag_details) != list:
+        bag_details = [bag_details]
+
     for index, bag in enumerate(bag_details):
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        for file in bag_details[bag]["files"]:
+        for file in bag["files"]:
             filename = file.split("/")[-1]
             s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
         with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in bag_details[bag]["files"]]
+            filenames = [file.split("/")[-1] for file in bag["files"]]
             f.write("\n".join(filenames))
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-            print(bag_details[bag])
-            f.write(bag_details[bag]["metadata"].encode("utf-8"))
+            print(bag)
+            f.write(bag["metadata"].encode("utf-8"))
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
@@ -98,11 +101,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     else:    
         print(output)
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
-#       raise
 
 
-#   finally:
-#       rmtree(tempdir)
+
+    finally:
+        rmtree(tempdir)
 
 
 @task()
