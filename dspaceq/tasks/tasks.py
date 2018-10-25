@@ -62,12 +62,18 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     tempdir = mkdtemp(prefix="dspaceq_")
     if type(bag_details) != list:
         bag_details = [bag_details]
+    if type(bag) != list:
+        bag = [bag]
+    if type(files) != list:
+        files = [files]
+        
+    bag["files"] = {}
 
     for index, bag in enumerate(bag_details):
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        for file in bag["files"]:
+        for file in ('bag', ["files"]):
             filename = file.split("/")[-1]
             s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
         with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
