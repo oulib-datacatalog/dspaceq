@@ -60,13 +60,13 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
-    bag["files"] = {}
+#    bag["files"] = {}
     if type(bag_details) != list:
         bag_details = [bag_details]
-    if type(bag) != list:
-        bag = [bag]
-    if type(files) != list:
-        files = [files]
+#    if type(bag) != list:
+#        bag = [bag]
+#    if type(files) != list:
+#        files = [files]
 
     for index, bag in enumerate(bag_details):
         item_match["item_{0}".format(index)] = bag
