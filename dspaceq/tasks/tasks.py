@@ -69,6 +69,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
+        print(bag)
         if type(bag) == dict: 
             for file in bag["files"]:
                 filename = file.split("/")[-1]
