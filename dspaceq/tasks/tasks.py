@@ -60,29 +60,28 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
-#    bag["files"] = {}
+    
     if type(bag_details) != list:
         bag_details = [bag_details]
-#    if type(bag) != list:
-#        bag = [bag]
-#    if type(files) != list:
-#        files = [files]
 
+    '''download files and metadata indicated by bag_details'''
     for index, bag in enumerate(bag_details):
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        for file in bag["files"]:
-            filename = file.split("/")[-1]
-            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
-        with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in bag["files"]]
-            f.write("\n".join(filenames))
-        with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-            print(bag)
-            f.write(bag["metadata"].encode("utf-8"))
-    if bag['files'] != {}:
-        bag['files'] = {'bag', [files]}
+        if type(bag) == dict: 
+            for file in bag["files"]:
+                filename = file.split("/")[-1]
+                s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
+            with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
+                filenames = [file.split("/")[-1] for file in bag["files"]]
+                f.write("\n".join(filenames))
+            with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
+               print(bag)
+               f.write(bag["metadata"].encode("utf-8"))
+        else:
+            print('The submitted item for bag ingest does not match format', bag)
+ 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
