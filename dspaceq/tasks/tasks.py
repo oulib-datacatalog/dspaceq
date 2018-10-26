@@ -71,15 +71,16 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         mkdir(bag_dir)
         print(bag)
         if type(bag) == dict: 
-            for file in bag["files"]:
+            files = bag.values()[0]["files"]
+            for file in files:
                 filename = file.split("/")[-1]
                 s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
             with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
-                filenames = [file.split("/")[-1] for file in bag["files"]]
+                filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
                print(bag)
-               f.write(bag["metadata"].encode("utf-8"))
+               f.write(bag.values()[0]["metadata"].encode("utf-8"))
         else:
             print('The submitted item for bag ingest does not match format', bag)
  
