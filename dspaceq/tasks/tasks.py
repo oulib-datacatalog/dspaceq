@@ -81,8 +81,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
             print(bag)
             f.write(bag["metadata"].encode("utf-8"))
-         if bag['files'] != {}:
-             bag['files'] = {'bag', [files]}
+    if bag['files'] != {}:
+        bag['files'] = {'bag', [files]}
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
