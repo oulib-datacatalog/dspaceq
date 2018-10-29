@@ -8,7 +8,7 @@ setup(name='dspaceq',
       install_requires=[
           'celery==3.1.22',
           'pymongo==3.2.1',
-          'requests==2.9.1',
+          'requests==2.20.0',
           'xlrd==1.0.0',
           'xlwt==1.0.0',
           'sqlalchemy==1.2.12',
