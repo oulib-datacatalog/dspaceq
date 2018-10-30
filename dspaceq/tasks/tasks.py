@@ -60,7 +60,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
-    
+    results = []
+
     if type(bag_details) != list:
         bag_details = [bag_details]
 
@@ -70,7 +71,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
         print(bag)
-        if type(bag) == dict: 
+        if type(bag) == dict:
             files = bag.values()[0]["files"]
             for file in files:
                 filename = file.split("/")[-1]
@@ -83,13 +84,12 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                f.write(bag.values()[0]["metadata"].encode("utf-8"))
         else:
             print('The submitted item for bag ingest does not match format', bag)
- 
+
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
 
         output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
-        results = []
         with open('{0}/mapfile'.format(tempdir)) as f:
             for row in f.read().split('\n'):
                 if row:
@@ -101,8 +101,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
-   
-    else:    
+
+    else:
         print(output)
         return {"Error": "Failed to ingest: {0}".format(bag_details)}
 
