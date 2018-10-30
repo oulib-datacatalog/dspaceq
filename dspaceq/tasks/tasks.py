@@ -112,7 +112,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     finally:
         rmtree(tempdir)
 
-return {"Success": results}
+    return {"Success": results}
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
