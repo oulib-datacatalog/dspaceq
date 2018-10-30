@@ -97,7 +97,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-        return {"Success": results}
+            if results != None:
+                return {"Success": results}
 
 
 
