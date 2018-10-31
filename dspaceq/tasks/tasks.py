@@ -86,8 +86,10 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             print('The submitted item for bag ingest does not match format', bag)
 
     try:
-        check_call(["chmod", "-R", "0775", tempdir])
-        check_call(["chgrp", "-R", "tomcat", tempdir])
+#        check_call(["chmod", "-R", "0775", tempdir])
+#        check_call(["chgrp", "-R", "tomcat", tempdir])
+        output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
+
         with open('{0}/mapfile'.format(tempdir)) as f:
             for row in f.read().split('\n'):
                 if row:
@@ -95,7 +97,6 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     results.append((item_match[item_index], handle))
                     print("Success", results)
 
-#        output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
 
 
@@ -103,8 +104,9 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
         logging.error(e, exc_info=True)
-#    else:
-#        print(output)
+
+    else:
+        print(output)
 #        return {"Error": "Failed to ingest: {0}".format(bag_details)}
 
 
