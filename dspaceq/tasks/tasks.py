@@ -70,7 +70,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         item_match["item_{0}".format(index)] = bag
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        print(bag)
+        print(bag_dir)
         if type(bag) == dict:
             files = bag.values()[0]["files"]
             for file in files:
@@ -88,12 +88,12 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
-
         with open('{0}/mapfile'.format(tempdir)) as f:
             for row in f.read().split('\n'):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
+                    print("Success", results)
 
 #        output = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
 
@@ -102,16 +102,15 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     except CalledProcessError as e:
         print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
-
+        logging.error(e, exc_info=True)
 #    else:
 #        print(output)
 #        return {"Error": "Failed to ingest: {0}".format(bag_details)}
 
 
 
-    finally:
-        rmtree(tempdir)
-        return {"Success": results}
+#    finally:
+#       rmtree(tempdir)
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
