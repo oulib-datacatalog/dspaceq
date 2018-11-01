@@ -67,7 +67,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     '''download files and metadata indicated by bag_details'''
     for index, bag in enumerate(bag_details):
-        item_match["item_{0}".format(index)] = bag
+        item_match["item_{0}".format(index)] = bag.keys()[0]
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
         if type(bag) == dict:
