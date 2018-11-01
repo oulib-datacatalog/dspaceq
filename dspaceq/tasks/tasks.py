@@ -51,7 +51,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(dictionary), {"bag name": {"files: [...], "metadata:" "xml"}}
+        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata:" "xml"}}]
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
@@ -79,10 +79,10 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-               print(bag)
-               f.write(bag.values()[0]["metadata"].encode("utf-8"))
+                f.write(bag.values()[0]["metadata"].encode("utf-8"))
         else:
             print('The submitted item for bag ingest does not match format', bag)
+            results.append(bag, "Failed to ingest-check submitted formatting")
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
@@ -94,24 +94,13 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-                    print("Initiating ingest")
-
-
-
-
     except CalledProcessError as e:
-        print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
-        logging.error(e, exc_info=True)
+        results = {"Error": "Failed to ingest"}
+    finally:
+       rmtree(tempdir)
 
-    else:
-        print("Ingest complete",results)
-#        return {"Error": "Failed to ingest: {0}".format(bag_details)}
-
-
-
-#    finally:
-#       rmtree(tempdir)
+    return(results)
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
