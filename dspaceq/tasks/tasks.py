@@ -85,8 +85,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             print('The submitted item for bag ingest does not match format', bag)
 
     try:
-#        check_call(["chmod", "-R", "0775", tempdir])
-#        check_call(["chgrp", "-R", "tomcat", tempdir])
+        check_call(["chmod", "-R", "0775", tempdir])
+        check_call(["chgrp", "-R", "tomcat", tempdir])
         check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection, "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=STDOUT)
 
         with open('{0}/mapfile'.format(tempdir)) as f:
