@@ -101,7 +101,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     finally:
        rmtree(tempdir)
 
-    return({"success": {item[0]:"{0}/{1}".format(DSPACE_FQDN, item[1]) for item in results}})
+    return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
