@@ -100,7 +100,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     finally:
        rmtree(tempdir)
 
-    return(results)
+    return({"success": {item[0]:"{0}/{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
@@ -109,9 +109,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
     args:
        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will
-       determine from Alma dspace_endpoint (string); url to shareok / commons
-       API endpoint - example: https://test.shareok.org/rest
+       collection (string); dspace collection id to load into - if blank, will determine from Alma
     """
 
     if bag == "":
