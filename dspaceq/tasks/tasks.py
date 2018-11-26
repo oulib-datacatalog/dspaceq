@@ -2,7 +2,8 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from os.path import join
 from os import mkdir
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, check_output, STDOUT
+
 from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
@@ -46,11 +47,11 @@ def add(x, y):
 
 
 @task()
-def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
+def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(dictionary), {"bag name": {"files: [...], "metadata:" "xml"}}
+        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata:" "xml"}}]
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
@@ -59,41 +60,46 @@ def bag_key(bag_details, collection, notify_email="libir@ou.edu"):
 
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
+    results = []
+
+    if type(bag_details) != list:
+        bag_details = [bag_details]
+
+    '''download files and metadata indicated by bag_details'''
     for index, bag in enumerate(bag_details):
-        print("bagtype: {0}, bag_val: {1}".format(type(bag), bag))
-        item_match["item_{0}".format(index)] = bag
+        item_match["item_{0}".format(index)] = bag.keys()[0]
         bag_dir = join(tempdir, "item_{0}".format(index))
         mkdir(bag_dir)
-        for file in bag_details[bag]["files"]:
-            filename = file.split("/")[-1]
-            s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
-        with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
-            filenames = [file.split("/")[-1] for file in bag_details[bag]["files"]]
-            f.write("\n".join(filenames))
-        with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-            f.write(bag_details[bag]["metadata"].encode("utf-8"))
+        if type(bag) == dict:
+            files = bag.values()[0]["files"]
+            for file in files:
+                filename = file.split("/")[-1]
+                s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
+            with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
+                filenames = [file.split("/")[-1] for file in files]
+                f.write("\n".join(filenames))
+            with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
+                f.write(bag.values()[0]["metadata"].encode("utf-8"))
+        else:
+            print('The submitted item for bag ingest does not match format', bag)
+            results.append(bag, "Failed to ingest-check submitted formatting")
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
-        check_call([DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c",
-        collection, "-s", tempdir, "-m", '{0}/mapfile'.format(tempdir)])
-
+        check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=STDOUT)
         with open('{0}/mapfile'.format(tempdir)) as f:
-            results = []
             for row in f.read().split('\n'):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
-
-        return {"Success": results}
     except CalledProcessError as e:
-        print("Failed to ingest: {0}".format(bag_details))
         print("Error: {0}".format(e))
-        return {"Error": "Failed to ingest: {0}".format(bag_details)}
+        results = {"Error": "Failed to ingest"}
     finally:
-        rmtree(tempdir)
+       rmtree(tempdir)
 
+    return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
@@ -102,9 +108,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
     args:
        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-       collection (string); dspace collection id to load into - if blank, will
-       determine from Alma dspace_endpoint (string); url to shareok / commons
-       API endpoint - example: https://test.shareok.org/rest
+       collection (string); dspace collection id to load into - if blank, will determine from Alma
     """
 
     if bag == "":
@@ -154,11 +158,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
         ingest = signature(
-            "libtoolsq.tasks.tasks.awsDissertation",
-            queue="test-queue",
-            kwargs={"dspaceapiurl": REST_ENDPOINT,
-                    "collectionhandle": collection,
-                    "items": items
+            "dspaceq.tasks.tasks.dspace_ingest",
+            queue=QUEUE_NAME,
+            kwargs={"collection": collection,
+                    "bag_details": items
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
