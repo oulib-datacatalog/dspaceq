@@ -217,7 +217,6 @@ def notify_etd_missing_fields():
     return "No Missing Details"
 
 
-
 @task()
 def notify_dspace_etd_loaded(args):
     """
