@@ -200,7 +200,7 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag] = {}
                 bags_missing_details[bag]['mmsid'] = mmsid
                 bags_missing_details[bag]['missing'] = items
-                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}'.format(x) for x in list_s3_files(bag)]
+                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}/{1}'.format(s3_bucket, x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))

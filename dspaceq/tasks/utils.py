@@ -99,7 +99,7 @@ def list_s3_files(bag_name):
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
     s3 = boto3.client('s3')
     files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
-    return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
+    return [f for f in files if f.endswith((".pdf", ".txt"))]
 
 
 def missing_fields(bib_record):
