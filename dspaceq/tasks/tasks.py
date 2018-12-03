@@ -148,8 +148,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
     )
-    update_catalog = signature(
-        "dspaceq.tasks.tasks.update_catalog",
+    update_datacatalog = signature(
+        "dspaceq.tasks.tasks.update_datacatalog",
         queue=QUEUE_NAME
     )
     send_email = signature(
@@ -167,7 +167,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest | group(update_alma, update_catalog, send_email))
+        chain = (ingest | group(update_alma, update_datacatalog, send_email))
         chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
@@ -239,9 +239,9 @@ def notify_dspace_etd_loaded(args):
         emailtmplt = """
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
-        Requester: {{ requested_details[request].name }}
-        Email: {{ requested_details[request].email }}
-        URL: {{ requested_details[request].url }}
+        Requester: {{ request_details[request].name }}
+        Email: {{ request_details[request].email }}
+        URL: {{ request_details[request].url }}
         {% endfor %}
         """
         env = jinja2.Environment()
