@@ -87,7 +87,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
-        check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=STDOUT)
+        cmd_stdout = check_output(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=STDOUT)
         with open('{0}/mapfile'.format(tempdir)) as f:
             for row in f.read().split('\n'):
                 if row:
@@ -95,6 +95,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
         print("Error: {0}".format(e))
+        print(cmd_stdout)
         results = {"Error": "Failed to ingest"}
     finally:
        rmtree(tempdir)
