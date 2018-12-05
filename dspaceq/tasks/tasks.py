@@ -205,14 +205,14 @@ def notify_etd_missing_fields():
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(bags=bags_missing_details)
-        send_email = signature(
+        sendmail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
                'to': ETD_NOTIFICATION_EMAIL,
                'subject': 'Missing ETD Fields',
                'body': msg
                })
-        send_email.delay()
+        sendmail.delay()
         logging.info("Sent ETD notification email to {0}".format(ETD_NOTIFICATION_EMAIL))
         return "Notification Sent"
     logging.info("No missing attributes - no notification email")
@@ -247,14 +247,14 @@ def notify_dspace_etd_loaded(args):
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(request_details=request_details)
-        send_email = signature(
+        sendmail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
                'to': IR_NOTIFICATION_EMAIL,
                'subject': 'ETD Requests Loaded into Repository',
                'body': msg
                })
-        send_email.delay()
+        sendmail.delay()
         return "Ingest notification sent"
     return "No items to ingest - no notification sent"
 
@@ -313,14 +313,14 @@ def update_alma_url_field(args, notify=True):
                     logging.info("Alma record updated for mmsid: {0}".format(mmsid))
                     status['success'].append([bagname, url])
                     if notify is True:
-                        send_email = signature(
+                        sendmail = signature(
                             "emailq.tasks.tasks.sendmail",
                             kwargs={
                             'to': ALMA_NOTIFICATION_EMAIL,
                             'subject': 'ETD Record Updated - URL',
                             'body': msg.format(mmsid, old_url, url)
                         })
-                        send_email.delay()
+                        sendmail.delay()
                         logging.info("Sent Alma notification email")
                 else:
                     logging.error("Could not update record: {0}".format(mmsid))
