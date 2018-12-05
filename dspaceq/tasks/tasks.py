@@ -156,6 +156,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
     )
+    notify_missing_fields = signature(
+        "dspaceq.tasks.tasks.notify_etd_missing_fields",
+        queue=QUEUE_NAME
+    )
     for collection in collections.keys():
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
