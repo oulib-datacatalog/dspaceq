@@ -254,7 +254,7 @@ def notify_dspace_etd_loaded(args):
         sendmail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
-               'to': IR_NOTIFICATION_EMAIL,
+               'to': 3dudeswinning@gmail.com,
                'subject': 'ETD Requests Loaded into Repository',
                'body': msg
                })
