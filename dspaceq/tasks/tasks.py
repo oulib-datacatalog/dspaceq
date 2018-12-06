@@ -234,6 +234,8 @@ def notify_dspace_etd_loaded(args):
     """
     if "success" in args:
         ingested_items = args
+    else:
+        pass
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
