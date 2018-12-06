@@ -20,13 +20,25 @@ pg_db = {
 }
 
 startdate_query = """
-    select distinct(handle), item_id, start_date
+  select * from (
+    select handle, item_id, max(start_date) as max_date
     from handle
     join item2bundle on item2bundle.item_id = handle.resource_id
     join bundle2bitstream on bundle2bitstream.bundle_id = item2bundle.bundle_id
     join resourcepolicy on resourcepolicy.dspace_object = bundle2bitstream.bitstream_id
-    where resourcepolicy.start_date >= :beg_date
-    and resourcepolicy.start_date <= :end_date;
+    group by handle.handle, item2bundle.item_id
+    having handle in (
+      select distinct(handle)
+      from handle
+      join item2bundle on item2bundle.item_id = handle.resource_id
+      join bundle2bitstream on bundle2bitstream.bundle_id = item2bundle.bundle_id
+      join resourcepolicy on resourcepolicy.dspace_object = bundle2bitstream.bitstream_id
+      where resourcepolicy.start_date >= :beg_date
+      and resourcepolicy.start_date <= :end_date
+    )
+  ) as embargos
+  where embargos.max_date >= :beg_date
+  and embargos.max_date <= :end_date;
 """
 
 metadata_query = """
@@ -83,9 +95,9 @@ def report_embargoed_items(beg_date, end_date):
         res_meta = dict(conn.execute(text(metadata_query), item_id=item_id, fields=(AUTHOR, URI, TITLE, DEPARTMENT)).fetchall())
         results.append(
             [handle, 
-             res_meta.get(AUTHOR, "Unkown"),
-             res_meta.get(TITLE, "Unkown"),
-             res_meta.get(DEPARTMENT, "Unkown"),
+             res_meta.get(AUTHOR, "Unknown"),
+             res_meta.get(TITLE, "Unknown"),
+             res_meta.get(DEPARTMENT, "Unknown"),
              start_date.isoformat()
             ]
         )
