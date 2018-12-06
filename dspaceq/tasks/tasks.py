@@ -228,12 +228,11 @@ def notify_dspace_etd_loaded(args):
     """
     Send email notifying repository group that new ETDs have been loaded into the repository
     This is called by the ingest_thesis_dissertation task
-
+    """
     args:
        args: {"success": {bagname: url}
-    """
-
-    ingested_items = args.get("success", default = None)
+    
+    ingested_items = args.get("success")
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
