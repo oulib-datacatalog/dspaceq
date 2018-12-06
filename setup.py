@@ -2,11 +2,7 @@
 #ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(name='dspaceq',
-<<<<<<< HEAD
-      version='0.0.141',
-=======
-      version='0.0.142',
->>>>>>> 2e9c00b51befe11af3f7f1e8a72fd0daa498aba2
+      version='0.0.143',
       packages= find_packages(),
       package_data={'dspaceq':['tasks/xslt/*']},
       install_requires=[

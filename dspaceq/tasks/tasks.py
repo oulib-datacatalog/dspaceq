@@ -97,7 +97,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         print("Error: {0}".format(e))
         results = {"Error": "Failed to ingest"}
     finally:
-       rmtree(tempdir)
+        rmtree(tempdir)
     if "Error" in results:
         return(results)
     else:
@@ -232,7 +232,8 @@ def notify_dspace_etd_loaded(args):
     args:
        args: {"success": {bagname: url}
     """
-    ingested_items = args.get("success")
+    if "success" in args:
+        ingested_items = args
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
