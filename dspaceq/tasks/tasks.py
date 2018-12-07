@@ -19,6 +19,7 @@ import boto3
 import logging
 import requests
 import jinja2
+import inspect
 
 from utils import *
 from config import alma_url
@@ -97,9 +98,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         print("Error: {0}".format(e))
         results = {"Error": "Failed to ingest"}
     finally:
-       rmtree(tempdir)
-
-    return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
+        rmtree(tempdir)
+    if "Error" in results:
+        return(results)
+    else:
+        return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
@@ -146,12 +149,16 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
     )
-    update_catalog = signature(
-        "dspaceq.tasks.tasks.update_catalog",
+    update_datacatalog = signature(
+        "dspaceq.tasks.tasks.update_datacatalog",
         queue=QUEUE_NAME
     )
-    send_email = signature(
+    send_etd_notification = signature(
         "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
+        queue=QUEUE_NAME
+    )
+    notify_missing_fields = signature(
+        "dspaceq.tasks.tasks.notify_etd_missing_fields",
         queue=QUEUE_NAME
     )
     for collection in collections.keys():
@@ -165,7 +172,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest | group(update_alma, update_catalog, send_email))
+        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
         chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
@@ -198,19 +205,19 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag] = {}
                 bags_missing_details[bag]['mmsid'] = mmsid
                 bags_missing_details[bag]['missing'] = items
-                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}'.format(x) for x in list_s3_files(bag)]
+                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}/{1}'.format(s3_bucket, x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(bags=bags_missing_details)
-        send_email = signature(
+        sendmail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
                'to': ETD_NOTIFICATION_EMAIL,
                'subject': 'Missing ETD Fields',
                'body': msg
                })
-        send_email.delay()
+        sendmail.delay()
         logging.info("Sent ETD notification email to {0}".format(ETD_NOTIFICATION_EMAIL))
         return "Notification Sent"
     logging.info("No missing attributes - no notification email")
@@ -222,37 +229,40 @@ def notify_dspace_etd_loaded(args):
     """
     Send email notifying repository group that new ETDs have been loaded into the repository
     This is called by the ingest_thesis_dissertation task
-
+   
     args:
        args: {"success": {bagname: url}
-    """
+     """  
     ingested_items = args.get("success")
+    print(ingested_items)
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
         request_details = get_requested_etds(mmsids_regex)
+        print(request_details)
         for request in request_details:
             request['url'] = ingested_url_lookup[request['mmsid']]
 
         emailtmplt = """
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
-        Requester: {{ requested_details[request].name }}
-        Email: {{ requested_details[request].email }}
-        URL: {{ requested_details[request].url }}
+        Requester: {{ request.name }}
+        Email: {{ request.email }}
+        URL: {{ request.url }}
         {% endfor %}
         """
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(request_details=request_details)
-        send_email = signature(
+        print(msg)
+        send_mail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
                'to': IR_NOTIFICATION_EMAIL,
                'subject': 'ETD Requests Loaded into Repository',
                'body': msg
                })
-        send_email.delay()
+        send_mail.delay()
         return "Ingest notification sent"
     return "No items to ingest - no notification sent"
 
@@ -311,14 +321,14 @@ def update_alma_url_field(args, notify=True):
                     logging.info("Alma record updated for mmsid: {0}".format(mmsid))
                     status['success'].append([bagname, url])
                     if notify is True:
-                        send_email = signature(
+                        sendmail = signature(
                             "emailq.tasks.tasks.sendmail",
                             kwargs={
                             'to': ALMA_NOTIFICATION_EMAIL,
                             'subject': 'ETD Record Updated - URL',
                             'body': msg.format(mmsid, old_url, url)
                         })
-                        send_email.delay()
+                        sendmail.delay()
                         logging.info("Sent Alma notification email")
                 else:
                     logging.error("Could not update record: {0}".format(mmsid))

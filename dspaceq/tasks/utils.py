@@ -99,7 +99,7 @@ def list_s3_files(bag_name):
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
     s3 = boto3.client('s3')
     files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
-    return ["{0}/{1}".format(s3_bucket, f) for f in files if f.endswith((".pdf", ".txt"))]
+    return [f for f in files if f.endswith((".pdf", ".txt"))]
 
 
 def missing_fields(bib_record):
@@ -186,14 +186,13 @@ def get_digitized_bags(mmsids):
         This looks for digitized objects in S3 that have not been ingested into shareok
 
     """
+    if type(mmsids) != list:
+        mmsids = [mmsids]
     regex_list = '|'.join('^share.*{0}$'.format(mmsid) for mmsid in mmsids)
-    options = {'bag':
-                   {'$regex': regex_list,
-                    'locations.s3.exists': True,
-                    'application.dspace.ingested': {'$ne': True},
-                    'project': 'private'
-                    }
-               }
+    options = {'bag':{'$regex': regex_list},
+               'locations.s3.exists': True,
+               'application.dspace.ingested': {'$ne': True},
+              }
     db_client = app.backend.database.client
     digital_objects = db_client.catalog.digital_objects
     results = digital_objects.find(options)
