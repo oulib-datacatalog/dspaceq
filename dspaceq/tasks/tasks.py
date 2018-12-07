@@ -233,8 +233,6 @@ def notify_dspace_etd_loaded(args):
     args:
        args: {"success": {bagname: url}
      """  
-#    return inspect.getargspec(notify_dspace_etd_loaded) 
-
     ingested_items = args.get("success")
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
@@ -242,6 +240,8 @@ def notify_dspace_etd_loaded(args):
         request_details = get_requested_etds(mmsids_regex)
         for request in request_details:
             request['url'] = ingested_url_lookup[request['mmsid']]
+            request['name'] = ingested_url_lookup[request['name']]
+            request['email'] = ingested_url_lookup[request['email']]
 
         emailtmplt = """
         The following ETD requests have been loaded into the repository:
