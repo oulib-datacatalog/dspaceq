@@ -145,14 +145,14 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         else:
             collections[collection].append({bag: {"files": files, "metadata": dc}})
 
-#    update_alma = signature(
-#        "dspaceq.tasks.tasks.update_alma_url_field",
-#        queue=QUEUE_NAME
-#    )
-#    update_datacatalog = signature(
-#        "dspaceq.tasks.tasks.update_datacatalog",
-#        queue=QUEUE_NAME
-#    )
+    update_alma = signature(
+        "dspaceq.tasks.tasks.update_alma_url_field",
+        queue=QUEUE_NAME
+    )
+    update_datacatalog = signature(
+        "dspaceq.tasks.tasks.update_datacatalog",
+        queue=QUEUE_NAME
+    )
     send_etd_notification = signature(
         "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
@@ -172,7 +172,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest | send_etd_notification) #group(update_alma, update_datacatalog, send_etd_notification))
+        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
         chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
