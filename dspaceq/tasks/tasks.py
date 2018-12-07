@@ -234,14 +234,14 @@ def notify_dspace_etd_loaded(args):
        args: {"success": {bagname: url}
      """  
     ingested_items = args.get("success")
+    print(ingested_items)
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
         request_details = get_requested_etds(mmsids_regex)
+        print(request_details)
         for request in request_details:
             request['url'] = ingested_url_lookup[request['mmsid']]
-            request['name'] = ingested_url_lookup[request['name']]
-            request['email'] = ingested_url_lookup[request['email']]
 
         emailtmplt = """
         The following ETD requests have been loaded into the repository:
@@ -254,18 +254,17 @@ def notify_dspace_etd_loaded(args):
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
         msg = tmplt.render(request_details=request_details)
-        sendmail = signature(
+        print(msg)
+        send_mail = signature(
            "emailq.tasks.tasks.sendmail",
            kwargs={
                'to': IR_NOTIFICATION_EMAIL,
                'subject': 'ETD Requests Loaded into Repository',
                'body': msg
                })
-        sendmail.delay()
+        send_mail.delay()
         return "Ingest notification sent"
-    else:
-        logging.info("No items to ingest - no notification sent", ingested_items)
-        return "No items to ingest"
+    return "No items to ingest - no notification sent"
 
 
 def _update_alma_url_field(bib_record, url):
