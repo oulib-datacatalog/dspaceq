@@ -236,7 +236,6 @@ def notify_dspace_etd_loaded(args):
 #    return inspect.getargspec(notify_dspace_etd_loaded) 
 
     ingested_items = args.get("success")
-    return(ingested_items)
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
@@ -264,7 +263,12 @@ def notify_dspace_etd_loaded(args):
                })
         sendmail.delay()
         return "Ingest notification sent"
-    return "No items to ingest - no notification sent"
+    else:
+        logging.info("No items to ingest - no notification sent", ingested_items)
+        return "No items to ingest"
+    except CalledProcessError as e:
+        print("Error {0}".format(e))
+        logging.error("Notification not sent", ingested_items)
 
 
 def _update_alma_url_field(bib_record, url):
