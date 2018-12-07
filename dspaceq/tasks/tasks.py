@@ -235,7 +235,7 @@ def notify_dspace_etd_loaded(args):
      """  
 #    return inspect.getargspec(notify_dspace_etd_loaded) 
 
-    ingested_items = args.get("success", {}).get(bagname)
+    ingested_items = args.get("success")
     return(ingested_items)
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
