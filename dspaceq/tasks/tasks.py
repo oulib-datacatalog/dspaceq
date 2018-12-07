@@ -19,6 +19,7 @@ import boto3
 import logging
 import requests
 import jinja2
+import inspect
 
 from utils import *
 from config import alma_url
@@ -232,7 +233,10 @@ def notify_dspace_etd_loaded(args):
     args:
        args: {"success": {bagname: url}
      """  
-    ingested_items = args.get("success", {}).get("bagname")
+    return inspect.getargspec(notify_dspace_etd_loaded) 
+
+    ingested_items = args.get("success", {}).get(bagname)
+    return(ingested_items)
     if ingested_items:
         ingested_url_lookup = {get_mmsid(bag): url for bag, url in ingested_items.items()}
         mmsids_regex = "|".join([get_mmsid(bag) for bag in ingested_items.keys()])
