@@ -246,9 +246,9 @@ def notify_dspace_etd_loaded(args):
         emailtmplt = """
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
-        Requester: {{ request_details[request].name }}
-        Email: {{ request_details[request].email }}
-        URL: {{ request_details[request].url }}
+        Requester: {{ request.name }}
+        Email: {{ request.email }}
+        URL: {{ request.url }}
         {% endfor %}
         """
         env = jinja2.Environment()
