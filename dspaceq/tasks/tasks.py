@@ -233,7 +233,7 @@ def notify_dspace_etd_loaded(args):
     args:
        args: {"success": {bagname: url}
      """  
-    return inspect.getargspec(notify_dspace_etd_loaded) 
+#    return inspect.getargspec(notify_dspace_etd_loaded) 
 
     ingested_items = args.get("success", {}).get(bagname)
     return(ingested_items)
