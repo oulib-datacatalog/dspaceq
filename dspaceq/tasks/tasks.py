@@ -266,9 +266,6 @@ def notify_dspace_etd_loaded(args):
     else:
         logging.info("No items to ingest - no notification sent", ingested_items)
         return "No items to ingest"
-    except:
-        print("Notification Failure: Error {0}")
-        logging.error("Notification not sent", ingested_items)
 
 
 def _update_alma_url_field(bib_record, url):
