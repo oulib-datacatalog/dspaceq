@@ -266,8 +266,8 @@ def notify_dspace_etd_loaded(args):
     else:
         logging.info("No items to ingest - no notification sent", ingested_items)
         return "No items to ingest"
-    except CalledProcessError as e:
-        print("Error {0}".format(e))
+    except:
+        print("Notification Failure: Error {0}")
         logging.error("Notification not sent", ingested_items)
 
 
