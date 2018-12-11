@@ -90,11 +90,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         check_call(["chgrp", "-R", "tomcat", tempdir])
         with open("ds_ingest_log.txt", "w") as f:
             check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=f, stdout=f)
-       with open('{0}/mapfile'.format(tempdir)) as f:
-           for row in f.read().split('\n'):
-               if row:
-                   item_index, handle = row.split(" ")
-                   results.append((item_match[item_index], handle))
+        with open('{0}/mapfile'.format(tempdir)) as f:
+            for row in f.read().split('\n'):
+                if row:
+                    item_index, handle = row.split(" ")
+                    results.append((item_match[item_index], handle))
     except CalledProcessError as e:
         with open("ds_ingest_log.txt", "r") as f:
             print(f.read)
