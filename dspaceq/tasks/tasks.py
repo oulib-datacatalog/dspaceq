@@ -87,7 +87,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 if "metadata_" in attribs:
                     with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
                         f.write(bag.values()[0]["metadata_{0}".format(attribs).keys]
-                        print(bag.values()[0]["metadata_{0}".format(attribs).keys])
+#                        print(bag.values()[0]["metadata_{0}"])
 
         else:
             print('The submitted item for bag ingest does not match format', bag)
