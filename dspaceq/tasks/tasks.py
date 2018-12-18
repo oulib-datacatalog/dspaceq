@@ -52,7 +52,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata:" "xml"}}]
+        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata": "xml", "metadata_ou": "ou.xml"}}]
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
@@ -80,13 +80,14 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-                f.write(bag.values()[0]["metadata"].encode("utf-8"))
-                print(bag.values()[0]["metadata"].encode("utf-8"))
-            with open(join(tempdir, "item_{0}".format(index), "metadata_ou.xml"), "w") as f:
-#                for key in bag.values():
-                if "metadata_" in bag.values():
-                    f.write(bag.values()[0]["metadata_{0}"].encode("utf-8"))
-                    print(bag.values()[0]["metadata_{0}"].encode("utf-8"))
+                f.write(bag.values()[0]["metadata"])
+                print(bag.values()[0]["metadata"])
+#           make changes discussed in meeting
+            for attribs in bag.values()[0].keys:
+                if "metadata_" in attribs:
+                    with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
+                        f.write(bag.values()[0]["metadata_{0}".format(attribs).keys]
+                        print(bag.values()[0]["metadata_{0}".format(attribs).keys]
 
         else:
             print('The submitted item for bag ingest does not match format', bag)
