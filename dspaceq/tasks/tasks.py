@@ -82,7 +82,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
                 f.write(bag.values()[0]["metadata"].encode("utf-8"))
             with open(join(tempdir, "item_{0}".format(index), "metadata_ou.xml"), "w") as f:
-                for key in bag.values():
+                for key in bag.keys():
                     if "metadata_" in key:
                         f.write(bag.values()[0]["metadata_{0}"].encode("utf-8"))
         else:
