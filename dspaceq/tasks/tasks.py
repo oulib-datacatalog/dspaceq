@@ -85,7 +85,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             for attribs in bag.values()[0]:
                 if "metadata_" in attribs:
                     with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
-                        f.write(bag.values()[0]["metadata_{0}".format(attribs)])
+                        f.write(bag.values()[0]["{0}".format(attribs)])
 #                        print(bag.values()[0]["metadata_{0}"])
                 else:
                     print("No additional metadata")
