@@ -52,7 +52,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata:" "xml"}}]
+        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata": "xml", "metadata_ou": "ou.xml"}}]
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
@@ -80,7 +80,15 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-                f.write(bag.values()[0]["metadata"].encode("utf-8"))
+                f.write(bag.values()[0]["metadata"])
+                print(bag.values()[0]["metadata"])
+            for attribs in bag.values()[0]:
+                if "metadata_" in attribs:
+                    with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
+                        f.write(bag.values()[0]["{0}".format(attribs)])
+#                        print(bag.values()[0]["metadata_{0}"])
+                else:
+                    print("No additional metadata")
         else:
             print('The submitted item for bag ingest does not match format', bag)
             results.append(bag, "Failed to ingest-check submitted formatting")
@@ -88,17 +96,20 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     try:
         check_call(["chmod", "-R", "0775", tempdir])
         check_call(["chgrp", "-R", "tomcat", tempdir])
-        check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=STDOUT)
+        with open('{0}/ds_ingest_log.txt'.format(tempdir), "w") as f:
+            check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=f, stdout=f)
         with open('{0}/mapfile'.format(tempdir)) as f:
             for row in f.read().split('\n'):
                 if row:
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
-        print("Error: {0}".format(e))
-        results = {"Error": "Failed to ingest"}
-    finally:
-        rmtree(tempdir)
+        with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
+            print(f.read())
+            print("Error: {0}".format(e))
+            results = {"Error": "Failed to ingest"}
+#    finally:
+#        rmtree(tempdir)
     if "Error" in results:
         return(results)
     else:
