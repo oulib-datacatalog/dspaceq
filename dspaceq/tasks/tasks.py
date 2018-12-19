@@ -82,11 +82,10 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
                 f.write(bag.values()[0]["metadata"])
                 print(bag.values()[0]["metadata"])
-#           make changes discussed in meeting
-            for attribs in bag.values()[0].keys:
+            for attribs in bag.values()[0]:
                 if "metadata_" in attribs:
                     with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
-                        f.write(bag.values()[0]["metadata_{0}".format(attribs).keys])
+                        f.write(bag.values()[0]["metadata_{0}".format(attribs)])
 #                        print(bag.values()[0]["metadata_{0}"])
                 else:
                     print("No additional metadata")
