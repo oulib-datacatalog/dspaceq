@@ -81,14 +81,10 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
                 f.write(bag.values()[0]["metadata"])
-                print(bag.values()[0]["metadata"])
             for attribs in bag.values()[0]:
                 if "metadata_" in attribs:
                     with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
                         f.write(bag.values()[0]["{0}".format(attribs)])
-#                        print(bag.values()[0]["metadata_{0}"])
-                else:
-                    print("No additional metadata")
         else:
             print('The submitted item for bag ingest does not match format', bag)
             results.append(bag, "Failed to ingest-check submitted formatting")
@@ -108,8 +104,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             print(f.read())
             print("Error: {0}".format(e))
             results = {"Error": "Failed to ingest"}
-#    finally:
-#        rmtree(tempdir)
+    finally:
+        rmtree(tempdir)
     if "Error" in results:
         return(results)
     else:
