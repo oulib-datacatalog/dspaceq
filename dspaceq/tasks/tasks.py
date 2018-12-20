@@ -80,11 +80,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-                f.write(bag.values()[0]["metadata"])
+                f.write(bag.values()[0]["metadata"].encode("utf-8"))
             for attribs in bag.values()[0]:
                 if "metadata_" in attribs:
                     with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
-                        f.write(bag.values()[0]["{0}".format(attribs)])
+                        f.write(bag.values()[0]["{0}".format(attribs)].encode("utf-8"))
         else:
             print('The submitted item for bag ingest does not match format', bag)
             results.append(bag, "Failed to ingest-check submitted formatting")
