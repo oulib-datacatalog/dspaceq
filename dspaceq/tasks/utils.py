@@ -118,7 +118,7 @@ def missing_fields(bib_record):
         "260/264: Publish Year": "record/datafield[@tag=264]|record/datafield[@tag=260]",
         "502: Thesis/Diss Tag": "record/datafield[@tag=502]",
         "690: School": "record/datafield[@tag=690]",
-        "650: Subject Heading": "record/datafield[@tag=650]"
+        "650/651/630/610: Subject Heading": "record/datafield[@tag=650]|record/datafield[@tag=651]|record/datafield[@tag=610]|record/datafield[@tag=630]"
     }
     if bib_record is not None and type(bib_record) is not dict:
         root = etree.fromstring(bib_record)
@@ -199,14 +199,19 @@ def get_digitized_bags(mmsids):
     return [result['bag'].split('/')[-1] for result in results]
 
 
-def update_ingest_status(bagname, url, application='dspace', project='private', ingested=True):
+def update_ingest_status(bagname, url, application='dspace', project=None, ingested=True):
     options = {'ingested': ingested,
                'url': url,
                'datetime': datetime.datetime.utcnow().isoformat()
                }
     db_client = app.backend.database.client
     digital_objects = db_client.catalog.digital_objects
-    document = digital_objects.find_one({'bag': {'$regex': bagname}, 'project': project})
+
+    if project is not None:
+        document = digital_objects.find_one({'bag': {'$regex': bagname}, 'project': project})
+    else:
+        document = digital_objects.find_one({'bag': {'$regex': bagname}})
+
     if document:
         if not document.get('application'):
             document['application'] = {}
