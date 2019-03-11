@@ -359,7 +359,7 @@ def update_datacatalog(args):
     ingested_items = args.get("success")
     if ingested_items:
         for bagname, url in ingested_items.items():
-            update_ingest_status(bagname, url, application='dspace', project='private', ingested=True)
+            update_ingest_status(bagname, url, application='dspace', project=None, ingested=True)
         return "Updated data catalog"
     return "No items to update in data catalog"
 
