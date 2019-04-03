@@ -354,7 +354,7 @@ def update_datacatalog(args):
     This is called by the ingest_thesis_dissertation task
 
     args:
-       {"success": {bagname: url}
+       {"success": {"bagname": "url"}}
     """
     ingested_items = args.get("success")
     if ingested_items:
