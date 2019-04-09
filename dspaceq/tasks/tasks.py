@@ -1,9 +1,9 @@
 from tempfile import mkdtemp
 from shutil import rmtree
-from os.path import join
+from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
-from pathlib import Path
+#from pathlib import Path
 
 from celery.task import task
 from celery import signature, group, Celery
@@ -91,8 +91,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             results.append(bag, "Failed to ingest-check submitted formatting")
 
     try:
-        check_call(["chmod", "-R", "0775", tempdir])
-        check_call(["chgrp", "-R", "tomcat", tempdir])
+        #check_call(["chmod", "-R", "0775", tempdir])
+        #check_call(["chgrp", "-R", "tomcat", tempdir])
         with open('{0}/ds_ingest_log.txt'.format(tempdir), "w") as f:
             check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=f, stdout=f)
         with open('{0}/mapfile'.format(tempdir)) as f:
@@ -101,8 +101,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
-        ds_ingest_log = Path('{0}/ds_ingest_log.txt'.format(tempdir))       
-        if ds_ingest_log.is_file():
+        exists = os.path.isfile('{0}/ds_ingest_log.txt'.format(tempdir))
+        if exists:
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
     print("Error: {0}".format(e))
