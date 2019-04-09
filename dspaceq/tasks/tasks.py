@@ -1,9 +1,9 @@
 from tempfile import mkdtemp
 from shutil import rmtree
+from os import path
 from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
-#from pathlib import Path
 
 from celery.task import task
 from celery import signature, group, Celery
@@ -101,7 +101,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
-        exists = os.path.isfile('{0}/ds_ingest_log.txt'.format(tempdir))
+        exists = isfile('{0}/ds_ingest_log.txt'.format(tempdir))
         if exists:
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
