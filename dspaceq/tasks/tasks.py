@@ -3,6 +3,7 @@ from shutil import rmtree
 from os.path import join
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
+from pathlib import Path
 
 from celery.task import task
 from celery import signature, group, Celery
@@ -100,10 +101,12 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
-        with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
-            print(f.read())
-            print("Error: {0}".format(e))
-            results = {"Error": "Failed to ingest"}
+        ds_ingest_log = Path('{0}/ds_ingest_log.txt'.format(tempdir))       
+        if ds_ingest_log.is_file():
+            with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
+                print(f.read())
+    print("Error: {0}".format(e))
+    results = {"Error": "Failed to ingest"}
     #finally:
         #rmtree(tempdir)
     if "Error" in results:
