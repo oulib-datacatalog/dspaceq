@@ -1,6 +1,7 @@
 from tempfile import mkdtemp
 from shutil import rmtree
-from os.path import join
+from os import path
+from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
 
@@ -100,10 +101,12 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                     item_index, handle = row.split(" ")
                     results.append((item_match[item_index], handle))
     except CalledProcessError as e:
-        with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
-            print(f.read())
-            print("Error: {0}".format(e))
-            results = {"Error": "Failed to ingest"}
+        exists = isfile('{0}/ds_ingest_log.txt'.format(tempdir))
+        if exists:
+            with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
+                print(f.read())
+        print("Error: {0}".format(e))
+        results = {"Error": "Failed to ingest"}
     finally:
         rmtree(tempdir)
     if "Error" in results:
@@ -353,12 +356,12 @@ def update_datacatalog(args):
     This is called by the ingest_thesis_dissertation task
 
     args:
-       {"success": {bagname: url}
+       {"success": {"bagname": "url"}}
     """
     ingested_items = args.get("success")
     if ingested_items:
         for bagname, url in ingested_items.items():
-            update_ingest_status(bagname, url, application='dspace', project='private', ingested=True)
+            update_ingest_status(bagname, url, application='dspace', project=None, ingested=True)
         return "Updated data catalog"
     return "No items to update in data catalog"
 
