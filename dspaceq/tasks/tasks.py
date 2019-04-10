@@ -107,8 +107,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 print(f.read())
         print("Error: {0}".format(e))
         results = {"Error": "Failed to ingest"}
-    #finally:
-        #rmtree(tempdir)
+    finally:
+        rmtree(tempdir)
     if "Error" in results:
         return(results)
     else:
