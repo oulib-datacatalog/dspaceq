@@ -105,8 +105,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         if exists:
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
-    print("Error: {0}".format(e))
-    results = {"Error": "Failed to ingest"}
+        print("Error: {0}".format(e))
+        results = {"Error": "Failed to ingest"}
     #finally:
         #rmtree(tempdir)
     if "Error" in results:
