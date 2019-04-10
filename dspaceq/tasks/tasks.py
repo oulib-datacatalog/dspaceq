@@ -195,12 +195,12 @@ def notify_etd_missing_fields():
     """
     emailtmplt = """
     The following ETD requests have missing fields:
+    The bags are accessible on norfile: ul-bagit\shareok\*
     {% for bag in bags %}========================
+      bag: {{ bag }}
       mmsid: {{ bags[bag].mmsid }}
       Missing Details:{% for field in bags[bag].missing %}
         {{ field }}{% endfor %}
-      Files:{% for etd_file in bags[bag].files %}
-        {{ etd_file }}{% endfor %}
     {% endfor %}
     """
 
@@ -215,7 +215,6 @@ def notify_etd_missing_fields():
                 bags_missing_details[bag] = {}
                 bags_missing_details[bag]['mmsid'] = mmsid
                 bags_missing_details[bag]['missing'] = items
-                bags_missing_details[bag]['files'] = ['https://s3.amazonaws.com/{0}/{1}'.format(s3_bucket, x) for x in list_s3_files(bag)]
     if bags_missing_details:
         env = jinja2.Environment()
         tmplt = env.from_string(cleandoc(emailtmplt))
