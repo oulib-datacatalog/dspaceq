@@ -106,13 +106,10 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
         print("Error: {0}".format(e))
-        results = {"Error": "Failed to ingest"}
+        raise Exception("failed to ingest")
     finally:
         rmtree(tempdir)
-    if "Error" in results:
-        return(results)
-    else:
-        return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
+    return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
