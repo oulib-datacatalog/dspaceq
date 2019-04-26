@@ -391,22 +391,21 @@ def remove_etd_catalog_record(id):
 
 
 @task()
-  def test_ingest(bag=""):
-      """
---    Displays missing details for bags
+def test_ingest(bag=""):
+    """
+    Displays missing details for bags
+    
+    args:
+        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+    """
 
-      args:
-         bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
-      """
+    if bag == "":
+        # Ingest requested items (bags) not yet ingested
+        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
+    else:
+        bags = [bag]
 
-      if bag == "":
-          # Ingest requested items (bags) not yet ingested
-          bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
-      else:
-          bags = [bag]
-
-      if bags == []:
-          return "No items found ready for ingest"
-
-      return check_missing([get_mmsid(bag) for bag in bags])
+    if bags == []:
+        return "No items found ready for ingest"
+    return check_missing([get_mmsid(bag) for bag in bags])
 
