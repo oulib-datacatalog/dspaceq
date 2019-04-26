@@ -133,9 +133,9 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
     collections = defaultdict(list)
     # initialize failed with bags with missing metadata
     failed = {}
-    for bag in bags:
-        if check_missing(get_mmsid(bag))[1] != []:
-            failed[bag] = "Missing required metadata in Alma - contact cataloging group"
+    #for bag in bags:
+    #    if check_missing(get_mmsid(bag))[1] != []:
+    #        failed[bag] = "Missing required metadata in Alma - contact cataloging group"
     # files to include in ingest
     # check missing returns the mmsid and a list of missing values
     good_bags = [bag for bag in bags if check_missing(get_mmsid(bag))[1] == []]
