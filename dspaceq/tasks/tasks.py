@@ -111,6 +111,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
         rmtree(tempdir)
     return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
+
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
     """
@@ -181,8 +182,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        #chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
-        #chain.delay()
+        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
+        chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
 
