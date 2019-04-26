@@ -133,6 +133,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
     collections = defaultdict(list)
     # initialize failed with bags with missing metadata
     failed = {}
+    return len(bags)
     for bag in bags:
         return check_missing(get_mmsid(bag))
         if check_missing([get_mmsid(bag)])[1] != []:
