@@ -167,10 +167,6 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
     )
-    notify_missing_fields = signature(
-        "dspaceq.tasks.tasks.notify_etd_missing_fields",
-        queue=QUEUE_NAME
-    )
     for collection in collections.keys():
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
@@ -391,3 +387,24 @@ def remove_etd_catalog_record(id):
         return "Record {0} has been removed".format(id)
     else:
         return {"error": "Record {0} not found"}
+
+
+@task()
+def test_ingest(bag=""):
+    """
+    Displays missing details for bags 
+
+    args:
+       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+    """
+
+    if bag == "":
+        # Ingest requested items (bags) not yet ingested
+        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
+    else:
+        bags = [bag]
+
+    if bags == []:
+        return "No items found ready for ingest"
+
+    return check_missing([get_mmsid(bag) for bag in bags])
