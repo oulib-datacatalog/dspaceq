@@ -411,4 +411,3 @@ def list_missing_metadata_etd(bag=""):
     if bags == []:
         return "No items found ready for ingest"
     return check_missing([get_mmsid(bag) for bag in bags])
-
