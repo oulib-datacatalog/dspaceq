@@ -106,13 +106,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
         print("Error: {0}".format(e))
-        results = {"Error": "Failed to ingest"}
+        raise Exception("failed to ingest")
     finally:
         rmtree(tempdir)
-    if "Error" in results:
-        return(results)
-    else:
-        return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
+    return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
+
 
 @task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
@@ -134,9 +132,15 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         return "No items found ready for ingest"
 
     collections = defaultdict(list)
+    # initialize failed with bags with missing metadata
     failed = {}
-    # files to include in ingest
     for bag in bags:
+        if check_missing(get_mmsid(bag))[0][1] != []:
+            failed[bag] = "Missing required metadata in Alma - contact cataloging group"
+    # files to include in ingest
+    # check missing returns the mmsid and a list of missing values
+    good_bags = [bag for bag in bags if check_missing([get_mmsid(bag)])[0] == []]
+    for bag in good_bags:
         files = list_s3_files(bag)
         logging.info("Using files: {0}".format(files))
 
@@ -390,12 +394,12 @@ def remove_etd_catalog_record(id):
 
 
 @task()
-def test_ingest(bag=""):
+def list_missing_metadata_etd(bag=""):
     """
-    Displays missing details for bags 
-
+    Displays missing metadata fields from Alma for specified bags
+    
     args:
-       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+        bag (string); Name of bag to ingest - if blank, will display all requested ingests
     """
 
     if bag == "":
@@ -406,5 +410,4 @@ def test_ingest(bag=""):
 
     if bags == []:
         return "No items found ready for ingest"
-
     return check_missing([get_mmsid(bag) for bag in bags])
