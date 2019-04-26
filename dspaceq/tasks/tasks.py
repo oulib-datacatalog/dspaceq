@@ -131,9 +131,12 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         return "No items found ready for ingest"
 
     collections = defaultdict(list)
-    failed = {}
+    # initialize failed with bags with missing metadata
+    failed = {bag: "missing required metadata in alma" for bag in bags if check_missing(get_mmsid(bag))[1] != []}
     # files to include in ingest
-    for bag in bags:
+    # check missing returns the mmsid and a list of missing values
+    good_bags = [bag for bag in bags if check_missing(get_mmsid(bag))[1] == []]
+    for bag in good_bags:
         files = list_s3_files(bag)
         logging.info("Using files: {0}".format(files))
 
@@ -164,10 +167,6 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         "dspaceq.tasks.tasks.notify_dspace_etd_loaded",
         queue=QUEUE_NAME
     )
-    notify_missing_fields = signature(
-        "dspaceq.tasks.tasks.notify_etd_missing_fields",
-        queue=QUEUE_NAME
-    )
     for collection in collections.keys():
         collection_bags = [x.keys()[0] for x in collections[collection]]
         items = collections[collection]
@@ -179,8 +178,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
-        chain.delay()
+        #chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
+        #chain.delay()
     return {"Kicked off ingest": bags, "failed": failed}
 
 
@@ -391,12 +390,12 @@ def remove_etd_catalog_record(id):
 
 
 @task()
-def test_ingest(bag=""):
+def list_missing_metadata_etd(bag=""):
     """
-    Displays missing details for bags
+    Displays missing metadata fields from Alma for specified bags
     
     args:
-        bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+        bag (string); Name of bag to ingest - if blank, will display all requested ingests
     """
 
     if bag == "":
