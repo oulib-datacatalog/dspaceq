@@ -180,7 +180,6 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             kwargs={"collection": collection ,
                     "bag_details": items
                     }
-            print(kwargs)
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
         chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
