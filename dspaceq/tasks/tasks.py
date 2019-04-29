@@ -159,7 +159,6 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         else:
             collections[collection].append({bag: {"files": files, "metadata": dc}})
             print(collections[collection].append({bag: {"files": files, "metadata": dc}})
-
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
