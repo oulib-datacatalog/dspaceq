@@ -140,7 +140,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             failed[bag] = "Missing required metadata in Alma - contact cataloging group"
         else:
             good_bags.append(bag)
-    return good_bags
+
     for bag in good_bags:
         files = list_s3_files(bag)
         logging.info("Using files: {0}".format(files))
@@ -148,7 +148,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         mmsid = get_mmsid(bag)
         bib_record = get_bib_record(mmsid)
         dc = bib_to_dc(bib_record)
-
+        return bib_record
         if collection == "":
             if type(bib_record) is not dict: #If this is a dictionary, we failed
                                              #to get a valid bib_record

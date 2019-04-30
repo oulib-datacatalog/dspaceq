@@ -144,6 +144,7 @@ def guess_collection(bib_record):
     sub502 = tree.find("record/datafield[@tag='502']/subfield[@code='a']")
     use_org = default_org
     use_type = default_type
+    text = ""
     if sub502 is not None:
         text = sub502.text.lower()
     for org_key in orgs.keys():
