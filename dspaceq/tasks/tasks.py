@@ -182,8 +182,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
-        chain.delay()
+        #chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
+        #chain.delay()
     return {"Kicked off ingest": good_bags, "failed": failed}
 
 
@@ -411,3 +411,35 @@ def list_missing_metadata_etd(bag=""):
     if bags == []:
         return "No items found ready for ingest"
     return check_missing([get_mmsid(bag) for bag in bags])
+
+
+@task()
+def verify_good_bags(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
+    """
+    Ingest a bagged thesis or dissertation into dspace
+
+    args:
+       bag (string); Name of bag to ingest - if blank, will ingest all non-ingested items
+       collection (string); dspace collection id to load into - if blank, will determine from Alma
+    """
+
+    if bag == "":
+        # Ingest requested items (bags) not yet ingested
+        bags = get_digitized_bags([etd['mmsid'] for etd in get_requested_etds(".*")])
+    else:
+        bags = [bag]
+
+    if bags == []:
+        return "No items found ready for ingest"
+
+    collections = defaultdict(list)
+    # initialize failed with bags with missing metadata
+    failed = {}
+    for bag in bags:
+        if check_missing(get_mmsid(bag))[0][1] != []:
+            failed[bag] = "Missing required metadata in Alma - contact cataloging group"
+    # files to include in ingest
+    # check missing returns the mmsid and a list of missing values
+    good_bags = check_missing([get_mmsid(bag)])
+    return good_bags 
+
