@@ -140,6 +140,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
     # files to include in ingest
     # check missing returns the mmsid and a list of missing values
     good_bags = [bag for bag in bags if check_missing([get_mmsid(bag)])[0] == []]
+    print("processing: {0}".format(good_bags))
     for bag in good_bags:
         files = list_s3_files(bag)
         logging.info("Using files: {0}".format(files))
@@ -183,7 +184,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
         chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
         chain.delay()
-    return {"Kicked off ingest": bags, "failed": failed}
+    return {"Kicked off ingest": good_bags, "failed": failed}
 
 
 @task()
