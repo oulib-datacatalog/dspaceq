@@ -182,8 +182,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     }
         )
         logging.info("Processing Collection: {0}\nBags:{1}".format(collection, collection_bags))
-        #chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
-        #chain.delay()
+        chain = (ingest | group(update_alma, update_datacatalog, send_etd_notification))
+        chain.delay()
     return {"Kicked off ingest": good_bags, "failed": failed}
 
 
