@@ -140,7 +140,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             failed[bag] = "Missing required metadata in Alma - contact cataloging group"
         else:
             good_bags.append(bag)
-
+    return good_bags
     for bag in good_bags:
         files = list_s3_files(bag)
         logging.info("Using files: {0}".format(files))
