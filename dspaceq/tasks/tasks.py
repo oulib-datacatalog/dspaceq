@@ -148,7 +148,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         mmsid = get_mmsid(bag)
         bib_record = get_bib_record(mmsid)
         dc = bib_to_dc(bib_record)
-        return bib_record
+        
         if collection == "":
             if type(bib_record) is not dict: #If this is a dictionary, we failed
                                              #to get a valid bib_record
