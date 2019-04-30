@@ -435,11 +435,13 @@ def verify_good_bags(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
     collections = defaultdict(list)
     # initialize failed with bags with missing metadata
     failed = {}
+    good_bags = []
     for bag in bags:
         if check_missing(get_mmsid(bag))[0][1] != []:
             failed[bag] = "Missing required metadata in Alma - contact cataloging group"
+        else:
+            good_bags.append(bag)
     # files to include in ingest
     # check missing returns the mmsid and a list of missing values
-    good_bags = check_missing([get_mmsid(bag)])
     return good_bags 
 
