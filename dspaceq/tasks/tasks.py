@@ -92,7 +92,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     try:
         check_call(["chmod", "-R", "0775", tempdir])
-        check_call(["chgrp", "-R", "tomcat", tempdir])
+       #check_call(["chgrp", "-R", "tomcat", tempdir])
         with open('{0}/ds_ingest_log.txt'.format(tempdir), "w") as f:
             check_call(["sudo", "-u", "tomcat", DSPACE_BINARY, "import", "-a", "-e", notify_email, "-c", collection.encode('ascii', 'ignore'), "-s", tempdir, "-m", ('{0}/mapfile'.format(tempdir))], stderr=f, stdout=f)
         with open('{0}/mapfile'.format(tempdir)) as f:
