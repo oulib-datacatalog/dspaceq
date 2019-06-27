@@ -149,6 +149,39 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         bib_record = get_bib_record(mmsid)
         dc = bib_to_dc(bib_record)
         
+        # Remove 590 tags from marc bib record
+        marc_xml = get_marc_from_bib(bib_record).getroot()
+        found_elements = marc_xml.xpath("datafield[@tag=590]")
+        for element in found_elements:
+            marc_xml.remove(element)
+        namespaced_marc_xml = valaidate_marc(marc_xml)
+
+        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml)gettroot()
+
+        # Remove duplicate "date created" fields
+        results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
+        for result in results[1:]:
+            dc_xml_element.remove(result)
+
+        # If committee.txt is present, add contents to dc metadata
+        if committee:
+            for committee_memeber in committee.split("\n"):
+                c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                c.text = committee_member
+                dc_sml_element.insert(0, c)
+            logging.info("Committee.txt added to metadata for: {0}".format(bag))
+
+        # If abstract.txt is present, add contents to dc metadata
+        if abstract:
+            a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
+            a.text = abstract
+            dc_xml_element.insert(0, a)
+            logging.info("Abstract.txt added to metadata for: {0}".format(bag))
+
+        dc = etree.tostring(dc_xml_element, pretty_print=True)
+        print(dc)
+
+
         if collection == "":
             if type(bib_record) is not dict: #If this is a dictionary, we failed
                                              #to get a valid bib_record
