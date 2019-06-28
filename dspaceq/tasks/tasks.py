@@ -164,7 +164,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             marc_xml.remove(element)
         namespaced_marc_xml = validate_marc(marc_xml)
 
-        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).gettroot()
+        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).getroot()
 
         # Remove duplicate "date created" fields
         results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
@@ -187,14 +187,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             logging.info("Abstract.txt added to metadata for: {0}".format(bag))
 
         dc = etree.tostring(dc_xml_element, pretty_print=True)
-        print(dc)
-
 
         if collection == "":
-            if type(bib_record) is not dict: #If this is a dictionary, we failed
-                                             #to get a valid bib_record
-                collections[guess_collection(bib_record)].append({bag: {"files":
-                    files, "metadata": dc}})
+            if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
+                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
             else:
                 logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
                 failed[bag] = bib_record  # failed - pass along error message
