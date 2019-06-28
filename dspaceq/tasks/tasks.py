@@ -31,11 +31,11 @@ from config import alma_url
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, REST_ENDPOINT
 from celeryconfig import QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
 
-ETD_NOTIFICATION_EMAIL = mpmalahy@ou.edu
-IR_NOTIFICATION_EMAIL = mpmalahy@ou.edu
-ALMA_NOTIFICATION_EMAIL = mpmalahy@ou.edu
-
 import celeryconfig
+
+ETD_NOTIFICATION_EMAIL = "mpmalahy@ou.edu"
+IR_NOTIFICATION_EMAIL = "mpmalahy@ou.edu"
+ALMA_NOTIFICATION_EMAIL = "mpmalahy@ou.edu"
 
 logging.basicConfig(level=logging.INFO)
 
