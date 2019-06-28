@@ -172,14 +172,16 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             dc_xml_element.remove(result)
 
         # If committee.txt is present, add contents to dc metadata
+        committee = committee.txt
         if committee:
-            for committee_memeber in committee.split("\n"):
+            for committee_member in committee.split("\n"):
                 c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
                 c.text = committee_member
                 dc_sml_element.insert(0, c)
             logging.info("Committee.txt added to metadata for: {0}".format(bag))
 
         # If abstract.txt is present, add contents to dc metadata
+        abstract = abstract.txt
         if abstract:
             a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
             a.text = abstract
