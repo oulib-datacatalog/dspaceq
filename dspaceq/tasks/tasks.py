@@ -162,7 +162,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         found_elements = marc_xml.xpath("datafield[@tag=590]")
         for element in found_elements:
             marc_xml.remove(element)
-        namespaced_marc_xml = valaidate_marc(marc_xml)
+        namespaced_marc_xml = validate_marc(marc_xml)
 
         dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).gettroot()
 
