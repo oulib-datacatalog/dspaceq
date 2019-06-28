@@ -164,7 +164,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             marc_xml.remove(element)
         namespaced_marc_xml = valaidate_marc(marc_xml)
 
-        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml)gettroot()
+        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).gettroot()
 
         # Remove duplicate "date created" fields
         results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
