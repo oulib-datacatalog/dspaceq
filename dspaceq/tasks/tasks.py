@@ -171,20 +171,22 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         for result in results[1:]:
             dc_xml_element.remove(result)
 
-        # If committee.txt is present, add contents to dc metadata
-        if committee == "committee.txt":
-            for committee_member in committee.split("\n"):
-                c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                c.text = committee_member
-                dc_sml_element.insert(0, c)
-            logging.info("Committee.txt added to metadata for: {0}".format(bag))
+        for file in files:
+            # If committee.txt is present, add contents to dc metadata
+            if committee == "committee.txt":
+                for committee_member in committee.split("\n"):
+                    c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                    c.text = committee_member
+                    dc_sml_element.insert(0, c)
+                logging.info("Committee.txt added to metadata for: {0}".format(bag))
 
-        # If abstract.txt is present, add contents to dc metadata
-        if abstract == "abstract.txt":
-            a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
-            a.text = abstract
-            dc_xml_element.insert(0, a)
-            logging.info("Abstract.txt added to metadata for: {0}".format(bag))
+        for file in files:
+            # If abstract.txt is present, add contents to dc metadata
+            if abstract == "abstract.txt":
+                a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
+                a.text = abstract
+                dc_xml_element.insert(0, a)
+                logging.info("Abstract.txt added to metadata for: {0}".format(bag))
 
         dc = etree.tostring(dc_xml_element, pretty_print=True)
 
