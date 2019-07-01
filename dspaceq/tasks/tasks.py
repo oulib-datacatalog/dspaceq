@@ -173,8 +173,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
         for file in files:
             # If committee.txt is present, add contents to dc metadata
-            with open('/private/shareok/{0}/data/committee.txt'.format(bag), 'r') as c:
-                #committee_member = committee.read().rsplit('\n', '')
+            with open('committee.txt', 'r') as c:
                 c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
                 c.text = committee_member
                 dc_xml_element.insert(0, c)
