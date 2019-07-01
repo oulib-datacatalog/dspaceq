@@ -173,23 +173,18 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
         for file in files:
             # If committee.txt is present, add contents to dc metadata
-            committee = isfile('/private/shareok/{0}/data/committee.txt'.format(s3_bucket))
-            if committee:
-                with open('/private/shareok/{0}/data/committee.txt'.format(s3_bucket)) as committee:
-                    for committee_member in committee.split("\n"):
-                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                        c.text = committee_member
-                        dc_xml_element.insert(0, c)
-                    logging.info("Committee.txt added to metadata for: {0}".format(bag))
+            with open('/private/shareok/{0}/data/committee.txt'.format(s3_bucket), 'r') as c:
+                #committee_member = committee.read().rsplit('\n', '')
+                c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                c.text = committee_member
+                dc_xml_element.insert(0, c)
+                logging.info("Committee.txt added to metadata for: {0}".format(bag))
 
-        for file in files:
             # If abstract.txt is present, add contents to dc metadata
-            abstract = isfile('/private/shareok/{0}/data/abstract.txt'.format(s3_bucket))
-            if abstract:
-                with open('/private/shareok/{0}/data/abstract.txt'.format(s3_bucket)) as abstract:
-                    a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
-                    a.text = abstract
-                    dc_xml_element.insert(0, a)
+            with open('/private/shareok/{0}/data/abstract.txt'.format(s3_bucket)) as a:
+                a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
+                a.text = abstract
+                dc_xml_element.insert(0, a)
                 logging.info("Abstract.txt added to metadata for: {0}".format(bag))
 
         dc = etree.tostring(dc_xml_element, pretty_print=True)
