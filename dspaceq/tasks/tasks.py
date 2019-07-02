@@ -195,8 +195,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     a.text = abstract_file
                     dc_xml_element.insert(0, a)
                    # logging.info("Abstract.txt added to metadata for: {0}".format(bag))
-           else:
-               new_file_list.append(file)
+            else:
+                new_file_list.append(file)
 
         dc = etree.tostring(dc_xml_element)
 
