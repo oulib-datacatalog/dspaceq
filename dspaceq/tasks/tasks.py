@@ -174,23 +174,16 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         new_file_list =[]
         for file in files:
             if 'committee.txt' in file.lower():
-                obj = s3.Object(s3_bucket, file)
-                committee = obj.get()['body'].read().decode('utf-8')
              # If committee.txt is present, add contents to dc metadata
-             #   with open('committee.txt') as committee_file:
-                if committee:
+                with open('committee.txt') as committee:
                     for committee_member in committee.split("\n"):
-                  #  member = committee_file.split("\n")
-                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                        c.text = committee_member
-                        dc_xml_element.insert(0, c)
+                       c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                       c.text = committee_member
+                       dc_xml_element.insert(0, c)
                    # logging.info("Committee.txt added to metadata for: {0}".format(bag))
             elif 'abstract.txt' in file.lower():
-                 obj = s3.Object(s3_bucket, file)
-                 abstract = obj.get()['body'].read().decode('utf-8')
-                 if abstract:
             # If abstract.txt is present, add contents to dc metadata
-              #  with open('abstract.txt') as abstract_file:
+                with open('abstract.txt') as abstract_file:
                     a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
                     a.text = abstract_file
                     dc_xml_element.insert(0, a)
