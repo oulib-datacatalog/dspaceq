@@ -182,7 +182,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                        c.text = committee_member
                        dc_xml_element.insert(0, c)
                    # logging.info("Committee.txt added to metadata for: {0}".format(bag))
-            elif 'abstract.txt' in file.lower():
+        for file in list_s3_files(bag):
+            if 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 with open('abstract.txt') as abstract_file:
                     a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
