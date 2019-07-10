@@ -173,19 +173,19 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         for result in results[1:]:
             dc_xml_element.remove(result)
 
-        for file in list_s3_files(bag):
+        for file in files:
             if 'committee.txt' in file.lower():
              # If committee.txt is present, add contents to dc metadata
-                with open('committee.txt') as committee:
+                with open('committee.txt').lower() as committee:
                     for committee_member in committee.split("\n"):
                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
                        c.text = committee_member
                        dc_xml_element.insert(0, c)
                    # logging.info("Committee.txt added to metadata for: {0}".format(bag))
-        for file in list_s3_files(bag):
+
             if 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
-                with open('abstract.txt') as abstract_file:
+                with open('abstract.txt').lower() as abstract_file:
                     a = etree.Element("dcvalue", element='contributor', qualifier='abstract')
                     a.text = abstract_file
                     dc_xml_element.insert(0, a)
