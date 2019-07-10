@@ -188,7 +188,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
-                abstract = obj.get().read().decode('utf-8')
+                
+                abstract = obj.get(file).read().decode('utf-8')
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
                     a.text = abstract
