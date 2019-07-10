@@ -55,7 +55,6 @@ def add(x, y):
     result = x + y
     return result
 
-
 @task()
 def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
@@ -189,7 +188,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
-                abstract = obj.get()['Contents'].read().decode('utf-8')
+                abstract = obj.get().read().decode('utf-8')
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
                     a.text = abstract
