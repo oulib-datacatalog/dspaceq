@@ -190,12 +190,11 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 obj = s3.Object(s3_bucket, file)
                 keys = obj.keys()
                 for key in keys:
-                    print "%s: %s" % (key, obj.get(key))
-                abstract = obj.get(key)[%s].read().decode('utf-8')
-                if abstract:
-                    a = etree.Element("dcvalue", element='description', qualifier='abstract')
-                    a.text = abstract
-                    dc_xml_element.insert(0, a)
+                    abstract = obj.get()[obj.get(key)].read().decode('utf-8')
+                    if abstract:
+                        a = etree.Element("dcvalue", element='description', qualifier='abstract')
+                        a.text = abstract
+                        dc_xml_element.insert(0, a)
                # logging.info("Abstract.txt added to metadata for: {0}".format(bag))
 
             else:
