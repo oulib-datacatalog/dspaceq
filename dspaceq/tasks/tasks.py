@@ -190,7 +190,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 obj = s3.Object(s3_bucket, file)
                 #TODO: Find keys for obj to read associated value. "s3.Object has no attribute 'keys'"
                 #TODO: Find appropriate method to read contents of the file
-                abstract = obj.get()[obj.get(key)].read().decode('utf-8')
+                abstract = obj.get()['body'].read().decode('utf-8')
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
                     a.text = abstract
