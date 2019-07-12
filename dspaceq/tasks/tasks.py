@@ -191,11 +191,11 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 #TODO: Find keys for obj to read associated value. "s3.Object has no attribute 'keys'"
                 #TODO: Find appropriate method to read contents of the file
                 abstract = obj.get()[obj.get(key)].read().decode('utf-8')
-            if abstract:
-                a = etree.Element("dcvalue", element='description', qualifier='abstract')
-                a.text = abstract
-                dc_xml_element.insert(0, a)
-                #logging.info("Abstract.txt added to metadata for: {0}".format(bag))
+                if abstract:
+                    a = etree.Element("dcvalue", element='description', qualifier='abstract')
+                    a.text = abstract
+                    dc_xml_element.insert(0, a)
+                    #logging.info("Abstract.txt added to metadata for: {0}".format(bag))
 
             else:
                 new_file_list.append(file)
