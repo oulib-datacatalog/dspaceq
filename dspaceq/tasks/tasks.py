@@ -175,22 +175,22 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         new_file_list = []
         for file in files:
             if 'committee.txt' in file.lower():
-            obj = s3.Object(s3_bucket, file)
-            committee = obj.get()['body'].read().decode('utf-8')
+                obj = s3.Object(s3_bucket, file)
+                committee = obj.get()['body'].read().decode('utf-8')
              # If committee.txt is present, add contents to dc metadata
             if committee:
-            for committee_member in committee.split("\n"):
-                c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                c.text = committee_member
-                dc_xml_element.insert(0, c)
+                for committee_member in committee.split("\n"):
+                    c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                    c.text = committee_member
+                    dc_xml_element.insert(0, c)
                # logging.info("Committee.txt added to metadata for: {0}".format(bag))
 
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
-            obj = s3.Object(s3_bucket, file)
+                obj = s3.Object(s3_bucket, file)
                 #TODO: Find keys for obj to read associated value. "s3.Object has no attribute 'keys'"
                 #TODO: Find appropriate method to read contents of the file
-            abstract = obj.get()[obj.get(key)].read().decode('utf-8')
+                abstract = obj.get()[obj.get(key)].read().decode('utf-8')
             if abstract:
                 a = etree.Element("dcvalue", element='description', qualifier='abstract')
                 a.text = abstract
