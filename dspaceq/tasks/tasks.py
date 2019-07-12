@@ -178,12 +178,12 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 obj = s3.Object(s3_bucket, file)
                 committee = obj.get()['body'].read().decode('utf-8')
              # If committee.txt is present, add contents to dc metadata
-            if committee:
-                for committee_member in committee.split("\n"):
-                    c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                    c.text = committee_member
-                    dc_xml_element.insert(0, c)
-               # logging.info("Committee.txt added to metadata for: {0}".format(bag))
+                if committee:
+                    for committee_member in committee.split("\n"):
+                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                        c.text = committee_member
+                        dc_xml_element.insert(0, c)
+                   # logging.info("Committee.txt added to metadata for: {0}".format(bag))
 
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
