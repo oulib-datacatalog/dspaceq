@@ -56,7 +56,7 @@ def add(x, y):
     return result
 
 @task()
-def dspace_ingest(bag3_details, collection, notify_email="libir@ou.edu"):
+def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
