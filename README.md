@@ -1,4 +1,4 @@
 DSPACE Queue
 ====
 
-DSPACE tasks for automation of loading content into DSPACE 5.x and 6.x  
+IN PROGRESS: DSPACE tasks for automation of loading content into DSPACE 6.3 environment for testing
