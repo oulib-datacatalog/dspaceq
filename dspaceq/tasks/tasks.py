@@ -27,6 +27,7 @@ from config import alma_url
 
 from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
 from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
+
 import celeryconfig
 
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +47,6 @@ def add(x, y):
     """
     result = x + y
     return result
-
 
 @task()
 def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
@@ -149,11 +149,53 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         bib_record = get_bib_record(mmsid)
         dc = bib_to_dc(bib_record)
         
+        # Remove 590 tags from marc bib record
+        marc_xml = get_marc_from_bib(bib_record).getroot()
+        found_elements = marc_xml.xpath("datafield[@tag=590]")
+        for element in found_elements:
+            marc_xml.remove(element)
+        namespaced_marc_xml = validate_marc(marc_xml)
+        print(namespaced_marc_xml)
+
+        dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).getroot()
+        print(dc_xml_element)
+
+        # Remove duplicate "date created" fields
+        results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
+        for result in results[1:]:
+            dc_xml_element.remove(result)
+
+        new_file_list = []
+        for file in files:
+            if 'committee.txt' in file.lower():
+                obj = s3.Object(s3_bucket, file)
+                committee = obj.get()['Body'].read().decode('utf-8')
+             # If committee.txt is present, add contents to dc metadata
+                if committee:
+                    for committee_member in committee.split("\n"):
+                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                        c.text = committee_member
+                        dc_xml_element.insert(0, c)
+
+            elif 'abstract.txt' in file.lower():
+            # If abstract.txt is present, add contents to dc metadata
+                obj = s3.Object(s3_bucket, file)
+                abstract = obj.get()['Body'].read().decode('utf-8')
+                if abstract:
+                    a = etree.Element("dcvalue", element='description', qualifier='abstract')
+                    a.text = abstract
+                    dc_xml_element.insert(0, a)
+
+            else:
+                new_file_list.append(file)
+                
+
+        dc = etree.tostring(dc_xml_element)
+        files = new_file_list
+
         if collection == "":
-            if type(bib_record) is not dict: #If this is a dictionary, we failed
-                                             #to get a valid bib_record
-                collections[guess_collection(bib_record)].append({bag: {"files":
-                    files, "metadata": dc}})
+            if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
+                collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})
             else:
                 logging.error("failed to get bib_record to determine collection for: {0}".format(bag))
                 failed[bag] = bib_record  # failed - pass along error message
