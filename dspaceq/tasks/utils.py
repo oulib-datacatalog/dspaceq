@@ -10,10 +10,14 @@ from itertools import compress
 from json import loads
 from lxml import etree
 
-from config import alma_url
+from .config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
-import celeryconfig
+try:
+    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+    import celeryconfig
+except ImportError:
+    ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
+    celeryconfig = None
 
 app = Celery()
 app.config_from_object(celeryconfig)
