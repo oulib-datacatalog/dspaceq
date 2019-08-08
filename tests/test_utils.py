@@ -20,6 +20,9 @@ def test_get_mmsid_in_name():
     bag_name = 'Tyler_20191231_9876543210987'  # 8 digit date proceeding mmsid
     response = get_mmsid(bag_name)
     assert_equal(response, '9876543210987')
+    bag_name = 'Tyler_20191231_9876543210987_ver2'  # 8 digit date proceeding mmsid
+    response = get_mmsid(bag_name)
+    assert_equal(response, '9876543210987')
     bag_name = '2019_Tyler_9876543210987'
     response = get_mmsid(bag_name)
     assert_equal(response, '9876543210987')
