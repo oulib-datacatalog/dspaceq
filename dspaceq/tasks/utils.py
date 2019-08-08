@@ -28,7 +28,7 @@ def get_mmsid(bag):
     # The MMS ID can be 8 to 19 digits long (with the first two digits referring to the record type and
     # the last four digits referring to a unique identifier for the institution)
     # get an mmsid like value that is not at the beginning of the string
-    mmsid = re.findall("(?<!^)(?<!\d)\d{8,19}(?!\d)", bag)
+    mmsid = re.findall("(?<!^)(?<!\d)\d{8,19}(?!\d)", bag)  # not proceeded or followed by a digit and not at beginning
     if mmsid:
         return mmsid[-1]  # return rightmost match
     return None
