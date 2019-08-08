@@ -25,9 +25,12 @@ app.config_from_object(celeryconfig)
 
 def get_mmsid(bag):
     """ get the mmsid from end of bag name """
-    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
-    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
-        return mmsid
+    # The MMS ID can be 8 to 19 digits long (with the first two digits referring to the record type and
+    # the last four digits referring to a unique identifier for the institution)
+    # get an mmsid like value that is not at the beginning of the string
+    mmsid = re.findall("(?<!^)(?<!\d)\d{8,19}(?!\d)", bag)
+    if mmsid:
+        return mmsid[-1]  # return rightmost match
     return None
 
 
