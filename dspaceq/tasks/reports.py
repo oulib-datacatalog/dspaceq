@@ -49,11 +49,13 @@ metadata_query = """
 """
 
 collection_query = """
-  select handle from handle
+  select handle, item_id from handle
     join collection on handle.resource_id = collection.uuid
     join collection2item on collection2item.collection_id = collection.uuid
-    where collection2item.item_id = :item_id;
+    where handle.handle in :handles
+    and collection2item.item_id in :item_ids;
 """
+
 
 # Metadata field values in DSpace
 AUTHOR = 3
@@ -97,14 +99,17 @@ def report_embargoed_items(beg_date, end_date, collections=None):
         logging.error("Potential sql injection attempt\n{0}".format(e))
         return {"ERROR": "Could not process supplied dates"}
 
+    if collections:
+        item_ids = tuple(item[1] for item in res_items)
+        handles = tuple(collections)
+        res_collection = conn.execute(text(collection_query), handles=handles, item_ids=item_ids).fetchall()
+        item_ids_in_collections = {item[1] for item in res_collection}
+
     results = []
     for item in res_items:
         handle, item_id, start_date = item
-        if collections:
-            res_collection = dict(conn.execute(text(collection_query), item_id=item_id).fetchall())
-            item_collection = res_collection.get("handle")
-            if not item_collection or item_collection not in collections:
-                continue
+        if collections and item_id not in item_ids_in_collections:
+            continue  #skip item if it is not in one of the defined collections
         res_meta = dict(conn.execute(text(metadata_query), item_id=item_id, fields=(AUTHOR, URI, TITLE, DEPARTMENT)).fetchall())
         results.append(
             [handle, 
