@@ -48,6 +48,13 @@ metadata_query = """
     and metadata_field_id in :fields;
 """
 
+collection_query = """
+  select handle from handle
+    join collection on handle.resource_id = collection.uuid
+    join collection2item on collection2item.collection_id = collection.uuid
+    where collection2item.item_id = :item_id;
+"""
+
 # Metadata field values in DSpace
 AUTHOR = 3
 URI = 25
@@ -57,7 +64,7 @@ DEPARTMENT = 103
 
 
 @task()
-def report_embargoed_items(beg_date, end_date):
+def report_embargoed_items(beg_date, end_date, collections=None):
     """
     Report details regarding items coming out of embargo in the selected date range
     Returns list of list: [[handle, author, title, dept/college, date],]
@@ -65,6 +72,7 @@ def report_embargoed_items(beg_date, end_date):
     args:
        beg_date (string): 'YYYY-MM-DD'
        end_date (string): 'YYYY-MM-DD'
+       collections [string]: ['11244/#####', ...] optional - limits results to specified collection handle(s)
     """
     
     # regular expression to match YYYY-MM-DD
@@ -92,6 +100,11 @@ def report_embargoed_items(beg_date, end_date):
     results = []
     for item in res_items:
         handle, item_id, start_date = item
+        if collections:
+            res_collection = dict(conn.execute(text(collection_query), item_id=item_id).fetchall())
+            item_collection = res_collection.get("handle")
+            if not item_collection or item_collection not in collections:
+                continue
         res_meta = dict(conn.execute(text(metadata_query), item_id=item_id, fields=(AUTHOR, URI, TITLE, DEPARTMENT)).fetchall())
         results.append(
             [handle, 
