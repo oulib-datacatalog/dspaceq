@@ -52,6 +52,15 @@ metadata_query = """
     and metadata_field_id in :fields;
 """
 
+collection_query = """
+  select handle, item_id from handle
+    join collection on handle.resource_id = collection.uuid
+    join collection2item on collection2item.collection_id = collection.uuid
+    where handle.handle in :handles
+    and collection2item.item_id in :item_ids;
+"""
+
+
 # Metadata field values in DSpace
 AUTHOR = 3
 URI = 25
@@ -61,7 +70,7 @@ DEPARTMENT = 103
 
 
 @task()
-def report_embargoed_items(beg_date, end_date):
+def report_embargoed_items(beg_date, end_date, collections=None):
     """
     Report details regarding items coming out of embargo in the selected date range
     Returns list of list: [[handle, author, title, dept/college, date],]
@@ -69,6 +78,7 @@ def report_embargoed_items(beg_date, end_date):
     args:
        beg_date (string): 'YYYY-MM-DD'
        end_date (string): 'YYYY-MM-DD'
+       collections [string]: ['11244/#####', ...] optional - limits results to specified collection handle(s)
     """
     
     # regular expression to match YYYY-MM-DD
@@ -93,9 +103,17 @@ def report_embargoed_items(beg_date, end_date):
         logging.error("Potential sql injection attempt\n{0}".format(e))
         return {"ERROR": "Could not process supplied dates"}
 
+    if collections:
+        item_ids = tuple(item[1] for item in res_items)
+        handles = tuple(collections)
+        res_collection = conn.execute(text(collection_query), handles=handles, item_ids=item_ids).fetchall()
+        item_ids_in_collections = {item[1] for item in res_collection}
+
     results = []
     for item in res_items:
         handle, item_id, start_date = item
+        if collections and item_id not in item_ids_in_collections:
+            continue  #skip item if it is not in one of the defined collections
         res_meta = dict(conn.execute(text(metadata_query), item_id=item_id, fields=(AUTHOR, URI, TITLE, DEPARTMENT)).fetchall())
         results.append(
             [handle, 
