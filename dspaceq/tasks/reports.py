@@ -7,7 +7,7 @@ try:
     from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
     import celeryconfig
 except ImportError:
-    DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = ""
+    DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = None
     celeryconfig = None
 
 import sqlalchemy
