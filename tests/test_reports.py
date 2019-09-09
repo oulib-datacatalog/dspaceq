@@ -30,18 +30,17 @@ def test_report_embargoed_items_valid_dates(engine_mock):
 
 @patch("dspaceq.tasks.reports.create_engine")
 def test_report_embargoed_items(engine_mock):
-    #engine_mock.return_value.connect.return_value.execute.side_effect = side_effect
-    #engine_mock.return_value.connect.return_value.execute.return_value.fetchall.return_value = [{"test": "test"}]
+    now = datetime.now()
     engine_mock.return_value.connect.return_value.execute.return_value.fetchall.side_effect = [
-        [{"handle": "test",
-          "item_id": "test",
-          "start_date": datetime.now()}],
-        [{AUTHOR: "",
-          URI: "",
-          TITLE: "",
-          ALTERNATIVE_TITLE: "",
-          DEPARTMENT: ""}]
+        [["handle/1234", "item_id", now]],
+        {AUTHOR: "Tyler",
+         URI: "handle/1234",
+         TITLE: "Reporting Test",
+         ALTERNATIVE_TITLE: "How I learned to love testing",
+         DEPARTMENT: "Info"}
     ]
-    print(report_embargoed_items("2019-09-01", "2019-09-30"))
+    assert_equal(
+        report_embargoed_items("2019-09-01", "2019-09-30"),
+        [['handle/1234', 'Tyler', 'Reporting Test', 'Info', now.isoformat()]]
+    )
 
-test_report_embargoed_items()
