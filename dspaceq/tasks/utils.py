@@ -125,7 +125,7 @@ def missing_fields(bib_record):
         "260/264: Publish Year": "record/datafield[@tag=264]|record/datafield[@tag=260]",
         "502: Thesis/Diss Tag": "record/datafield[@tag=502]",
         "690: School": "record/datafield[@tag=690]",
-        "650/651/630/610: Subject Heading": "record/datafield[@tag=650]|record/datafield[@tag=651]|record/datafield[@tag=610]|record/datafield[@tag=630]"
+        "600/610/611/630/650/651: Subject Heading": "record/datafield[@tag=600]|record/datafield[@tag=610]|record/datafield[@tag=611]|record/datafield[@tag=630]|record/datafield[@tag=650]|record/datafield[@tag=651]"
     }
     if bib_record is not None and type(bib_record) is not dict:
         root = etree.fromstring(bib_record)
