@@ -3,7 +3,7 @@
 ## Automated testing using Tox
 * ` pip install tox`
 * From the root directory of this repository run `tox` to initiate tests.
-* Adjust tox.ini file as needed to modify environments and dependencies.
+* Adjust [tox.ini](../tox.ini) file as needed to modify environments and dependencies.
 * See the [Tox documentation](https://tox.readthedocs.io/en/latest/) for more details. 
 
 ## Steps to manually run tests
