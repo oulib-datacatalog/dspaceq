@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 import sys
-from nose.tools import assert_true, assert_false, assert_equal, assert_not_equal, assert_is_none, nottest
+from nose.tools import assert_true, assert_false, assert_equal, assert_not_equal, assert_is_none, nottest, assert_raises
 try:
     from unittest.mock import MagicMock, Mock, patch
 except ImportError:
     from mock import MagicMock, Mock, patch
 from requests.exceptions import HTTPError
+from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds
+    get_requested_etds, get_bib_record
 
 from bson.objectid import ObjectId
 
@@ -165,3 +166,42 @@ def test_get_requested_etds_no_results(mock_backend):
     response = get_requested_etds(mmsid)
     assert_equal(response, [])
 
+
+@patch("dspaceq.tasks.utils.requests.get")
+def test_get_bib_record(mock_get):
+    mock_get.return_value = Mock(status_code=codes.OK, content="testing ascii")
+    assert_equal(get_bib_record("placeholder_mmsid"), "testing ascii")
+    mock_get.return_value = Mock(status_code=codes.OK, content=u"testing ascii in unicode string")
+    assert_equal(get_bib_record("placeholder_mmsid"), u"testing ascii in unicode string")
+    mock_get.return_value = Mock(status_code=codes.OK, content="testing unicode ☕ in ascii")
+    assert_equal(get_bib_record("placeholder_mmsid"), "testing unicode ☕ in ascii")
+    mock_get.return_value = Mock(status_code=codes.OK, content=u"testing unicode ☕")
+    assert_equal(get_bib_record("placeholder_mmsid"), u"testing unicode ☕")
+    mock_get.return_value = Mock(status_code=200, content="testing ascii")
+    assert_equal(get_bib_record("placeholder_mmsid"), "testing ascii")
+    mock_get.return_value = Mock(status_code=200, content=u"testing ascii in unicode string")
+    assert_equal(get_bib_record("placeholder_mmsid"), u"testing ascii in unicode string")
+    mock_get.return_value = Mock(status_code=200, content="testing unicode ☕ in ascii")
+    assert_equal(get_bib_record("placeholder_mmsid"), "testing unicode ☕ in ascii")
+    mock_get.return_value = Mock(status_code=200, content=u"testing unicode ☕")
+    assert_equal(get_bib_record("placeholder_mmsid"), u"testing unicode ☕")
+
+
+@patch("dspaceq.tasks.utils.requests.get")
+def test_get_bib_record_not_ok_status(mock_get):
+    mock_get.return_value = Mock(status_code=400)
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma server returned code: 400"})
+    mock_get.return_value = Mock(status_code=403)
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma server returned code: 403"})
+    mock_get.return_value = Mock(status_code=404)
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma server returned code: 404"})
+    mock_get.return_value = Mock(status_code=500)
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma server returned code: 500"})
+
+
+@patch("dspaceq.tasks.utils.requests.get")
+def test_get_bib_record_connection_issues(mock_get):
+    mock_get.side_effect = ConnectTimeout()
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma Connection Error - try again later."})
+    mock_get.side_effect = ConnectionError()
+    assert_equal(get_bib_record("placeholder_mmsid"), {"error": "Alma Connection Error - try again later."})
