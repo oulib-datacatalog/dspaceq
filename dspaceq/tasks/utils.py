@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import boto3
 import pkg_resources
 import re
