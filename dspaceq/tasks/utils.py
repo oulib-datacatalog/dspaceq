@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import boto3
 import pkg_resources
 import re
@@ -10,10 +11,14 @@ from itertools import compress
 from json import loads
 from lxml import etree
 
-from config import alma_url
+from .config import alma_url
 
-from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
-import celeryconfig
+try:
+    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+    import celeryconfig
+except ImportError:
+    ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
+    celeryconfig = None
 
 app = Celery()
 app.config_from_object(celeryconfig)
@@ -21,9 +26,12 @@ app.config_from_object(celeryconfig)
 
 def get_mmsid(bag):
     """ get the mmsid from end of bag name """
-    mmsid = bag.split("_")[-1].strip()  # using bag name formatting: 1990_somebag_0987654321
-    if re.match("^[0-9]+$", mmsid):  # check that we have an mmsid like value
-        return mmsid
+    # The MMS ID can be 8 to 19 digits long (with the first two digits referring to the record type and
+    # the last four digits referring to a unique identifier for the institution)
+    # get an mmsid like value that is not at the beginning of the string
+    mmsid = re.findall("(?<!^)(?<!\d)\d{8,19}(?!\d)", bag)  # not proceeded or followed by a digit and not at beginning
+    if mmsid:
+        return mmsid[-1]  # return rightmost match
     return None
 
 

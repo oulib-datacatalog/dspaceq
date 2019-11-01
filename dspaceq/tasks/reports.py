@@ -3,8 +3,12 @@ from celery.task import task
 import logging
 import re
 
-from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
-import celeryconfig
+try:
+    from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
+    import celeryconfig
+except ImportError:
+    DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = None
+    celeryconfig = None
 
 import sqlalchemy
 from sqlalchemy.engine.url import URL
