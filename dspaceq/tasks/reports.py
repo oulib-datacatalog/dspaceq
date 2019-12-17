@@ -103,7 +103,7 @@ def report_embargoed_items(beg_date, end_date, collections=None):
         logging.error("Potential sql injection attempt\n{0}".format(e))
         return {"ERROR": "Could not process supplied dates"}
 
-    if collections:
+    if collections and list(res_items):  # do not perform if res_items is empty
         item_ids = tuple(item[1] for item in res_items)
         handles = tuple(collections)
         res_collection = conn.execute(text(collection_query), handles=handles, item_ids=item_ids).fetchall()
