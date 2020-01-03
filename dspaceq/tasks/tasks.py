@@ -303,6 +303,8 @@ def notify_dspace_etd_loaded(args):
         {% for request in request_details %}========================
         Requester: {{ request.name }}
         Email: {{ request.email }}
+        Creator: {{ request.creator }}
+        Year: {{ request.year }}
         URL: {{ request.url }}
         {% endfor %}
         """
