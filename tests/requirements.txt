@@ -1,7 +1,7 @@
 # This was populated from dependencies listed in setup.py
 celery==3.1.22
 pymongo==3.2.1
-requests==2.20.0
+requests==2.24.0
 sqlalchemy==1.2.12
 psycopg2==2.7.3.1
 jinja2
