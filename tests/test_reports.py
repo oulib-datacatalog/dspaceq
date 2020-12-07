@@ -1,4 +1,6 @@
 import sys
+import sqlalchemy
+from sqlalchemy.dialects import postgresql
 from nose.tools import assert_true, assert_false, assert_equal, nottest, assert_raises
 try:
     from unittest.mock import MagicMock, Mock, patch, sentinel
@@ -43,4 +45,12 @@ def test_report_embargoed_items(engine_mock):
         report_embargoed_items("2019-09-01", "2019-09-30"),
         [['handle/1234', 'Tyler', 'Reporting Test', 'Info', now.isoformat()]]
     )
+
+
+def test_sqlalchemy_sql_template():
+    template = "select * from :table;"
+    result = "select * from %(table)s;"
+    text = sqlalchemy.sql.text(template)
+    compiled_text = str(text.compile(dialect=postgresql.dialect()))
+    assert_equal(compiled_text, result)
 
