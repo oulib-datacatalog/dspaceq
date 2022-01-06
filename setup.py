@@ -6,7 +6,7 @@ setup(name='dspaceq',
       packages= find_packages(),
       package_data={'dspaceq':['tasks/xslt/*']},
       install_requires=[
-          'celery==3.1.22',
+          'celery==5.2.2',
           'pymongo==3.2.1',
           'requests==2.24.0',
           'sqlalchemy==1.3.20',
