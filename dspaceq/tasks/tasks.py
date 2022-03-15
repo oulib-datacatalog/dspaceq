@@ -1,40 +1,38 @@
 from tempfile import mkdtemp
 from shutil import rmtree
-from os import path
 from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
 
-from celery.task import task
 from celery import signature, group, Celery
 from inspect import cleandoc
 from collections import defaultdict
 from bson.objectid import ObjectId
 from lxml import etree
 
-from os import chown
-from os import chmod
-import grp
-
 import boto3
 import logging
 import requests
 import jinja2
-import inspect
 
 from .utils import *
 from .config import alma_url
 
+logging.basicConfig(level=logging.INFO)
+
+try:
+    import celeryconfig
+except ImportError:
+    logging.error("Failed to import celeryconfig")
+    celeryconfig = None
+
 try:
     from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
     from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
-    import celeryconfig
 except ImportError:
+    logging.error("Failed to import variables from celeryconfig")
     ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
     IR_NOTIFICATION_EMAIL = QUEUE_NAME = DSPACE_BINARY = DSPACE_FQDN = ""
-    celeryconfig = None
-
-logging.basicConfig(level=logging.INFO)
 
 app = Celery()
 app.config_from_object(celeryconfig)
@@ -43,7 +41,7 @@ s3 = boto3.resource("s3")
 s3_bucket = 'ul-bagit'
 
 #Example task
-@task()
+@app.task()
 def add(x, y):
     """ Example task that adds two numbers or strings
         args: x and y
@@ -52,7 +50,7 @@ def add(x, y):
     result = x + y
     return result
 
-@task()
+@app.task()
 def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
@@ -116,7 +114,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
 
 
-@task()
+@app.task()
 def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
     """
     Ingest a bagged thesis or dissertation into dspace
@@ -233,7 +231,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
     return {"Kicked off ingest": good_bags, "failed": failed}
 
 
-@task()
+@app.task()
 def notify_etd_missing_fields():
     """
     Sends email to collections to notify of missing fields in Alma
@@ -279,7 +277,7 @@ def notify_etd_missing_fields():
     return "No Missing Details"
 
 
-@task()
+@app.task()
 def notify_dspace_etd_loaded(args):
     """
     Send email notifying repository group that new ETDs have been loaded into the repository
@@ -345,7 +343,7 @@ def _update_alma_url_field(bib_record, url):
     return etree.tostring(tree, standalone="yes", encoding="UTF-8")
 
 
-@task()
+@app.task()
 def update_alma_url_field(args, notify=True):
     """
     Updates the Electronic location (tag 856) in Alma with the URL
@@ -397,7 +395,7 @@ def update_alma_url_field(args, notify=True):
         return status
 
 
-@task()
+@app.task()
 def update_datacatalog(args):
     """
     Adds ingested status into Data Catalog
@@ -414,7 +412,7 @@ def update_datacatalog(args):
     return "No items to update in data catalog"
 
 
-@task()
+@app.task()
 def remove_etd_catalog_record(id):
     """
     Removes the specified record from the etd digital catalog
@@ -433,7 +431,6 @@ def remove_etd_catalog_record(id):
     etd = db_client.catalog.etd
     record = etd.find_one({'_id': ObjectId(id)})
     if record:
-        #etd.remove({'_id': ObjectId(id)})
         etd.delete_one({'_id': ObjectId(id)})  # limit to at most one record
         logging.info("Removed {0} from etd collection")
         return "Record {0} has been removed".format(id)
@@ -441,7 +438,7 @@ def remove_etd_catalog_record(id):
         return {"error": "Record {0} not found"}
 
 
-@task()
+@app.task()
 def list_missing_metadata_etd(bag=""):
     """
     Displays missing metadata fields from Alma for specified bags
@@ -461,7 +458,7 @@ def list_missing_metadata_etd(bag=""):
     return check_missing([get_mmsid(bag) for bag in bags])
 
 
-@task()
+@app.task()
 def verify_good_bags(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
     """
     Ingest a bagged thesis or dissertation into dspace

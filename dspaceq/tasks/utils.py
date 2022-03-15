@@ -13,12 +13,19 @@ from lxml import etree
 
 from .config import alma_url
 
+logging.basicConfig(level=logging.INFO)
+
 try:
-    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
     import celeryconfig
 except ImportError:
-    ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
+    logging.error("Failed to import celeryconfig")
     celeryconfig = None
+
+try:
+    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+except ImportError:
+    logging.error("Failed to import variables from celeryconfig")
+    ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
 
 app = Celery()
 app.config_from_object(celeryconfig)
