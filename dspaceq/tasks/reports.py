@@ -1,14 +1,20 @@
-from celery.task import task
+from celery import Celery
 
 import logging
 import re
+
+logging.basicConfig(level=logging.INFO)
 
 try:
     from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
     import celeryconfig
 except ImportError:
+    logging.error("Failed to import celeryconfig")
     DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = None
     celeryconfig = None
+
+app = Celery()
+app.config_from_object(celeryconfig)
 
 import sqlalchemy
 from sqlalchemy.engine.url import URL
@@ -69,7 +75,7 @@ ALTERNATIVE_TITLE = 65
 DEPARTMENT = 103
 
 
-@task()
+@app.task()
 def report_embargoed_items(beg_date, end_date, collections=None):
     """
     Report details regarding items coming out of embargo in the selected date range
