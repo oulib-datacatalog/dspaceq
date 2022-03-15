@@ -21,14 +21,18 @@ from .config import alma_url
 logging.basicConfig(level=logging.INFO)
 
 try:
-    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
-    from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
     import celeryconfig
 except ImportError:
     logging.error("Failed to import celeryconfig")
+    celeryconfig = None
+
+try:
+    from celeryconfig import ALMA_KEY, ALMA_RW_KEY, ETD_NOTIFICATION_EMAIL, ALMA_NOTIFICATION_EMAIL, REST_ENDPOINT
+    from celeryconfig import IR_NOTIFICATION_EMAIL, QUEUE_NAME, DSPACE_BINARY, DSPACE_FQDN
+except ImportError:
+    logging.error("Failed to import variables from celeryconfig")
     ALMA_KEY = ALMA_RW_KEY = ETD_NOTIFICATION_EMAIL = ALMA_NOTIFICATION_EMAIL = REST_ENDPOINT = ""
     IR_NOTIFICATION_EMAIL = QUEUE_NAME = DSPACE_BINARY = DSPACE_FQDN = ""
-    celeryconfig = None
 
 app = Celery()
 app.config_from_object(celeryconfig)

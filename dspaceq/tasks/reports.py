@@ -6,12 +6,16 @@ import re
 logging.basicConfig(level=logging.INFO)
 
 try:
-    from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
     import celeryconfig
 except ImportError:
     logging.error("Failed to import celeryconfig")
-    DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = None
     celeryconfig = None
+
+try:
+    from celeryconfig import DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
+except ImportError:
+    logging.error("Failed to import variables from celeryconfig")
+    DB_USERNAME = DB_PASSWORD = DB_NAME = DB_HOST = DB_PORT = None
 
 app = Celery()
 app.config_from_object(celeryconfig)
