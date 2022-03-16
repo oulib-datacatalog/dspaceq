@@ -25,7 +25,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy import create_engine, text
 
 pg_db = {
-    'drivername': 'postgres',
+    'drivername': 'postgresql',
     'username': DB_USERNAME,
     'password': DB_PASSWORD,
     'database': DB_NAME,
