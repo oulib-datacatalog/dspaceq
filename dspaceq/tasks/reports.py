@@ -101,7 +101,7 @@ def report_embargoed_items(beg_date, end_date, collections=None):
 
     # TODO: check that end_date is greater than beg_date
     try:
-        engine = create_engine(URL(**pg_db))
+        engine = create_engine(URL.create(**pg_db))
         conn = engine.connect()
     except sqlalchemy.exc.OperationalError as e:
         logging.error("Error with DB connection (from dspaceq/reports)\n{0}".format(e))
