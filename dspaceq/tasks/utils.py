@@ -223,10 +223,14 @@ def update_ingest_status(bagname, url, application='dspace', project=None, inges
     db_client = app.backend.database.client
     digital_objects = db_client.catalog.digital_objects
 
+    # verify and update bagname to include shareok path in name
+    if not re.match("^shareok", bagname):
+        bagname = "shareok/{0}".format(bagname)
+
     if project is not None:
-        document = digital_objects.find_one({'bag': {'$regex': bagname}, 'project': project})
+        document = digital_objects.find_one({'bag': bagname, 'project': project})
     else:
-        document = digital_objects.find_one({'bag': {'$regex': bagname}})
+        document = digital_objects.find_one({'bag': bagname})
 
     if document:
         if not document.get('application'):
