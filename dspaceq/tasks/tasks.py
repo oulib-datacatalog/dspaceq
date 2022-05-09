@@ -37,7 +37,6 @@ except ImportError:
 app = Celery()
 app.config_from_object(celeryconfig)
 
-s3 = boto3.resource("s3")
 s3_bucket = 'ul-bagit'
 
 #Example task
@@ -65,6 +64,8 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     item_match = {} #lookup to match item in mapfile to bag
     tempdir = mkdtemp(prefix="dspaceq_")
     results = []
+    
+    s3 = boto3.resource("s3")
 
     if type(bag_details) != list:
         bag_details = [bag_details]
@@ -132,6 +133,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
     if bags == []:
         return "No items found ready for ingest"
+
+    s3 = boto3.resource("s3")
 
     collections = defaultdict(list)
     # initialize failed with bags with missing metadata
