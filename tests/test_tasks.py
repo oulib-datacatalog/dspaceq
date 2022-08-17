@@ -1,15 +1,16 @@
 import sys
-from nose.tools import assert_true, assert_false, assert_equal, nottest
+
 try:
     from unittest.mock import MagicMock, Mock, patch
 except ImportError:
     from mock import MagicMock, Mock, patch
+
 from requests.exceptions import HTTPError
 
-from dspaceq.tasks.tasks import add
+from dspaceq.tasks.tasks import add, ingest_thesis_dissertation
 
 
 def test_add():
-    assert_equal(add(21, 21), 42)
+    assert add(21, 21) == 42
 
 
