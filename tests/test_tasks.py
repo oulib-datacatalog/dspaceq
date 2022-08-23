@@ -1,4 +1,7 @@
+from genericpath import isfile
+#from subprocess import CalledProcessError
 import sys
+from pathlib2 import Path
 
 try:
     from unittest.mock import MagicMock, Mock, patch
@@ -15,27 +18,29 @@ def test_add():
     assert add(21, 21) == 42
 
 
-@pytest.mark.skip(reason="not complete")
+#@pytest.mark.skip(reason="not complete")
 def test_dspace_ingest(tmpdir):
     mock_boto3 = patch('dspaceq.tasks.tasks.boto3').start()
     mock_mkdtemp = patch('dspaceq.tasks.tasks.mkdtemp', return_value=str(tmpdir)).start()
-    mock_check_call = patch('dspaceq.tasks.tasks.check_call').start()
+    #mock_check_call = patch('dspaceq.tasks.tasks.check_call').start()
 
     # TODO: complete creation of temporary mapfile and populate test values
     mapfile = tmpdir / "mapfile"
+    mapfile = Path(mapfile)
     mapfile.touch()
+    assert Path.is_file(mapfile) == True
 
     # TODO: test of check_calls
-
     bag_details = [{"bag name": {"files": ["committee.txt", "abstract.txt", "file.pdf"], "metadata": "xml", "metadata_ou": "ou.xml"}}]
-    #with pytest.raises(Exception):
-    #    assert dspace_ingest(bag_details, collection="") == None
-    
-    # TODO: test results with values from test mapfile
-    assert dspace_ingest(bag_details, collection="") == None
-
+    with pytest.raises(Exception) as call_error:
+        dspace_ingest(bag_details, collection="")
+        
+    assert call_error.type == Exception
+    assert str(call_error.value) == 'failed to ingest'
     mock_boto3.resource.assert_called_with('s3')
 
+    # TODO: test results with values from test mapfile
+    #assert dspace_ingest(bag_details, collection="") == {"success":{}}
 
 def test_ingest_thesis_dissertation():
     mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
