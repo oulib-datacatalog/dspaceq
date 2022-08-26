@@ -1,7 +1,10 @@
 from genericpath import isfile
+import posix
 #from subprocess import CalledProcessError
 import sys
+from unittest import TestCase
 from pathlib2 import Path
+import os
 
 try:
     from unittest.mock import MagicMock, Mock, patch
@@ -13,7 +16,9 @@ from requests.exceptions import HTTPError
 
 from dspaceq.tasks.tasks import add, ingest_thesis_dissertation, dspace_ingest
 
+from dspaceq.tasks.utils import FailedIngest
 
+    
 def test_add():
     assert add(21, 21) == 42
 
@@ -22,26 +27,38 @@ def test_add():
 def test_dspace_ingest(tmpdir):
     mock_boto3 = patch('dspaceq.tasks.tasks.boto3').start()
     mock_mkdtemp = patch('dspaceq.tasks.tasks.mkdtemp', return_value=str(tmpdir)).start()
-    #mock_check_call = patch('dspaceq.tasks.tasks.check_call').start()
+    mock_check_call = patch('dspaceq.tasks.tasks.check_call').start()
+    mock_rmtree = patch('dspaceq.tasks.tasks.rmtree').start()
+    mock_mkdir = patch('dspaceq.tasks.tasks.mkdir').start()
 
     # TODO: complete creation of temporary mapfile and populate test values
     mapfile = tmpdir / "mapfile"
     mapfile = Path(mapfile)
     mapfile.touch()
+    with open(str(mapfile), 'w') as f:
+        f.write('item_0 handle')
     assert Path.is_file(mapfile) == True
-
+    
+    item_dir = Path(tmpdir / 'item_0')
+    item_dir.mkdir()
+    
     # TODO: test of check_calls
     bag_details = [{"bag name": {"files": ["committee.txt", "abstract.txt", "file.pdf"], "metadata": "xml", "metadata_ou": "ou.xml"}}]
-    with pytest.raises(Exception) as call_error:
-        dspace_ingest(bag_details, collection="")
-        
-    assert call_error.type == Exception
+    assert dspace_ingest(bag_details, collection="") == {"success":{'bag name': 'handle'}}
+    
+    assert Path.is_dir(item_dir) == True
+    mock_rmtree.assert_called_with(str(tmpdir))
+    assert mock_rmtree.call_count == 1
+    
+    mock_check_call.side_effect = FailedIngest('failed to ingest')
+    with pytest.raises(FailedIngest) as call_error:
+            dspace_ingest(bag_details, collection="")
+    assert call_error.type == FailedIngest
     assert str(call_error.value) == 'failed to ingest'
     mock_boto3.resource.assert_called_with('s3')
-
-    # TODO: test results with values from test mapfile
-    #assert dspace_ingest(bag_details, collection="") == {"success":{}}
-
+    mock_rmtree.assert_called_with(str(tmpdir))
+    assert mock_rmtree.call_count == 2
+    
 def test_ingest_thesis_dissertation():
     mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
     mock_check_missing = patch('dspaceq.tasks.tasks.check_missing').start()
@@ -69,3 +86,6 @@ def test_ingest_thesis_dissertation():
     with pytest.raises(ValueError):
         assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
         assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
+        
+def test_notify_etd_missing_fields():
+    mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()

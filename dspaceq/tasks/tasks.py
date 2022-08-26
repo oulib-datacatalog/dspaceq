@@ -109,7 +109,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
         print("Error: {0}".format(e))
-        raise Exception("failed to ingest")
+        raise FailedIngest("failed to ingest")
     finally:
         rmtree(tempdir)
     return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})

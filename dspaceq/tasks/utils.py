@@ -30,6 +30,10 @@ except ImportError:
 app = Celery()
 app.config_from_object(celeryconfig)
 
+class FailedIngest(Exception):
+    """ Exception raised when ingest fails """
+    pass
+
 
 def get_mmsid(bag):
     """ get the mmsid from end of bag name """
