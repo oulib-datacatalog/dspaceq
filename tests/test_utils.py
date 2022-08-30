@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 import sys
 
-try:
-    from unittest.mock import MagicMock, Mock, patch
-except ImportError:
+from six import PY2, ensure_text
+
+if PY2:
     from mock import MagicMock, Mock, patch
+    from pathlib2 import Path
+else:
+    from unittest.mock import MagicMock, Mock, patch
+    from pathlib import Path
+
 from requests.exceptions import HTTPError
 from requests import codes, ConnectionError, ConnectTimeout
 
@@ -208,7 +213,6 @@ def test_get_bib_record_connection_issues(mock_get):
 
 
 @patch("dspaceq.tasks.utils.get_bib_record")
-@patch("dspaceq.tasks.utils.missing_fields")
-def test_check_missing(mock_missing_fields, mock_get_bib_record):
-    mock_missing_fields.return_value = []
-    assert check_missing("9876543210123") == [("9876543210123", [])]
+def test_check_missing_with_missing_metadata(mock_get_bib_record):
+    mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')])]
