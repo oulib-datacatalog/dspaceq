@@ -3,13 +3,16 @@ import posix
 #from subprocess import CalledProcessError
 import sys
 from unittest import TestCase
-from pathlib2 import Path
 import os
 
-try:
-    from unittest.mock import MagicMock, Mock, patch
-except ImportError:
+from six import PY2
+
+if PY2:
     from mock import MagicMock, Mock, patch
+    from pathlib2 import Path
+else:
+    from unittest.mock import MagicMock, Mock, patch
+    from pathlib import Path
 
 import pytest
 from requests.exceptions import HTTPError
@@ -79,13 +82,12 @@ def test_ingest_thesis_dissertation():
         }
 
     mock_list_s3_files.return_value = ['test.pdf', 'test.txt']
-    mock_check_missing.return_value = [(9876543210987,[])]
+    mock_check_missing.return_value = [(9876543210987,[])]  # no missing metedata fields in Alma
     mock_etree_tostring.return_value = '<dc xmlns="http://www.loc.gov/MARC21/slim">test</dc>'
     mock_guess_collection.return_value = 'TEST thesis'
 
-    with pytest.raises(ValueError):
-        assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
-        assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
+    assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
+    assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
         
 def test_notify_etd_missing_fields():
     mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()
