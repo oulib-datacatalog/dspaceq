@@ -54,7 +54,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     """ Generates temporary directory and url for the bags to be downloaded from
         S3, prior to ingest into DSpace, then performs the ingest
 
-        args: bag_details(dictionary), [{"bag name": {"files: [...], "metadata": "xml", "metadata_ou": "ou.xml"}}]
+        args: bag_details(dictionary), [{"bag name": {"files": [...], "metadata": "xml", "metadata_ou": "ou.xml"}}]
               collection (string); dspace collection id to load into - if blank,
                                    will determine from Alma
               dspace_endpoint (string); url to shareok / commons API endpoint
@@ -72,23 +72,24 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
 
     '''download files and metadata indicated by bag_details'''
     for index, bag in enumerate(bag_details):
-        item_match["item_{0}".format(index)] = bag.keys()[0]
+        item_match["item_{0}".format(index)] = list(bag.keys())[0]
         bag_dir = join(tempdir, "item_{0}".format(index))
+        bag_args = list(bag.values())[0]
         mkdir(bag_dir)
         if type(bag) == dict:
-            files = bag.values()[0]["files"]
+            files = bag_args["files"]
             for file in files:
                 filename = file.split("/")[-1]
-                s3.Bucket(s3_bucket).download_file(file, join(tempdir, "item_{0}".format(index), filename))
-            with open(join(tempdir, "item_{0}".format(index), "contents"),"w") as f:
+                s3.Bucket(s3_bucket).download_file(file, join(bag_dir, filename))
+            with open(join(bag_dir, "contents"),"w") as f:
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
-            with open(join(tempdir, "item_{0}".format(index), "dublin_core.xml"), "w") as f:
-                f.write(bag.values()[0]["metadata"].encode("utf-8"))
-            for attribs in bag.values()[0]:
-                if "metadata_" in attribs:
-                    with open(join(tempdir, "item_{0}".format(index), "{0}.xml".format(attribs)), "w") as f:
-                        f.write(bag.values()[0]["{0}".format(attribs)].encode("utf-8"))
+            with open(join(bag_dir, "dublin_core.xml"), "w") as f:
+                f.write(bag_args["metadata"].encode("utf-8"))
+            for attrib in bag_args:
+                if "metadata_" in attrib:
+                    with open(join(bag_dir, attrib), "w") as f:
+                        f.write(bag_args[attrib].encode("utf-8"))
         else:
             print('The submitted item for bag ingest does not match format', bag)
             results.append(bag, "Failed to ingest-check submitted formatting")
@@ -109,7 +110,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
         print("Error: {0}".format(e))
-        raise FailedIngest("failed to ingest")
+        raise Exception("failed to ingest")
     finally:
         rmtree(tempdir)
     return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
@@ -137,22 +138,19 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
     s3 = boto3.resource("s3")
 
     collections = defaultdict(list)
-    # initialize failed with bags with missing metadata
+
     failed = {}
     good_bags = []
     for bag in bags:
         if check_missing(get_mmsid(bag))[0][1] != []:
             failed[bag] = "Missing required metadata in Alma - contact cataloging group"
-        else:
-            good_bags.append(bag)
+            continue  #skip to next bag
 
-    for bag in good_bags:
         files = list_s3_files(bag)
-        logging.info("Using files: {0}".format(files))
+        logging.debug("Using files: {0}".format(files))
 
         mmsid = get_mmsid(bag)
         bib_record = get_bib_record(mmsid)
-        dc = bib_to_dc(bib_record)
         
         # Remove 590 tags from marc bib record
         marc_xml = get_marc_from_bib(bib_record).getroot()
@@ -160,10 +158,10 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         for element in found_elements:
             marc_xml.remove(element)
         namespaced_marc_xml = validate_marc(marc_xml)
-        print(namespaced_marc_xml)
+        logging.debug(namespaced_marc_xml)
 
         dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).getroot()
-        print(dc_xml_element)
+        logging.debug(dc_xml_element)
 
         # Remove duplicate "date created" fields
         results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
@@ -171,6 +169,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             dc_xml_element.remove(result)
 
         new_file_list = []
+        error_in_file = False
         for file in files:
             if 'committee.txt' in file.lower():
                 obj = s3.Object(s3_bucket, file)
@@ -178,22 +177,38 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
              # If committee.txt is present, add contents to dc metadata
                 if committee:
                     for committee_member in committee.split("\n"):
-                        c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
-                        c.text = committee_member
-                        dc_xml_element.insert(0, c)
+                        try:
+                            c = etree.Element("dcvalue", element='contributor', qualifier='committeeMember')
+                            c.text = committee_member
+                            dc_xml_element.insert(0, c)
+                        except ValueError:
+                            logging.error("Incompatible character found in committee.txt for {0}".format(bag))
+                            failed[bag] = "Incompatible character found in committee.txt"
+                            error_in_file = True
+                            break
+                    if error_in_file:
+                        break  # break out of file handling loop
 
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
                 abstract = obj.get()['Body'].read().decode('utf-8')
                 if abstract:
-                    a = etree.Element("dcvalue", element='description', qualifier='abstract')
-                    a.text = abstract
-                    dc_xml_element.insert(0, a)
+                    try:
+                        a = etree.Element("dcvalue", element='description', qualifier='abstract')
+                        a.text = abstract
+                        dc_xml_element.insert(0, a)
+                    except ValueError:
+                        logging.error("Incompatible character found in abstract.txt for {0}".format(bag))
+                        failed[bag] = "Incompatible character found in abstract.txt"
+                        error_in_file = True
+                        break
 
             else:
                 new_file_list.append(file)
                 
+        if error_in_file:
+            continue  # skip to next bag
 
         dc = etree.tostring(dc_xml_element)
         files = new_file_list
@@ -206,6 +221,9 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 failed[bag] = bib_record  # failed - pass along error message
         else:
             collections[collection].append({bag: {"files": files, "metadata": dc}})
+        
+        good_bags.append(bag)
+        
     update_alma = signature(
         "dspaceq.tasks.tasks.update_alma_url_field",
         queue=QUEUE_NAME
