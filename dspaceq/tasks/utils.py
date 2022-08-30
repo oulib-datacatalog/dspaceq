@@ -182,7 +182,7 @@ def check_missing(mmsids):
     mmsids = [mmsids] if type(mmsids) != list else mmsids
     bib_records = map(get_bib_record, mmsids)
     missing = map(missing_fields, bib_records)
-    return zip(mmsids, missing)
+    return list(zip(mmsids, missing))
 
 
 def get_alma_url_field(bib_record):

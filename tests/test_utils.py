@@ -9,7 +9,7 @@ from requests.exceptions import HTTPError
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds, get_bib_record
+    get_requested_etds, get_bib_record, check_missing
 
 from bson.objectid import ObjectId
 
@@ -205,3 +205,10 @@ def test_get_bib_record_connection_issues(mock_get):
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
     mock_get.side_effect = ConnectionError()
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
+
+
+@patch("dspaceq.tasks.utils.get_bib_record")
+@patch("dspaceq.tasks.utils.missing_fields")
+def test_check_missing(mock_missing_fields, mock_get_bib_record):
+    mock_missing_fields.return_value = []
+    assert check_missing("9876543210123") == [("9876543210123", [])]
