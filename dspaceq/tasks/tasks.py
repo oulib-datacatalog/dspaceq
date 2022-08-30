@@ -9,6 +9,7 @@ from inspect import cleandoc
 from collections import defaultdict
 from bson.objectid import ObjectId
 from lxml import etree
+from six import ensure_text
 
 import boto3
 import logging
@@ -85,11 +86,11 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
                 filenames = [file.split("/")[-1] for file in files]
                 f.write("\n".join(filenames))
             with open(join(bag_dir, "dublin_core.xml"), "w") as f:
-                f.write(bag_args["metadata"].encode("utf-8"))
+                f.write(ensure_text(bag_args["metadata"]))
             for attrib in bag_args:
                 if "metadata_" in attrib:
                     with open(join(bag_dir, attrib), "w") as f:
-                        f.write(bag_args[attrib].encode("utf-8"))
+                        f.write(ensure_text(bag_args[attrib]))
         else:
             print('The submitted item for bag ingest does not match format', bag)
             results.append(bag, "Failed to ingest-check submitted formatting")
@@ -110,7 +111,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
             with open('{0}/ds_ingest_log.txt'.format(tempdir), "r") as f:
                 print(f.read())
         print("Error: {0}".format(e))
-        raise Exception("failed to ingest")
+        raise FailedIngest("failed to ingest")
     finally:
         rmtree(tempdir)
     return({"success": {item[0]:"{0}{1}".format(DSPACE_FQDN, item[1]) for item in results}})
@@ -237,7 +238,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         queue=QUEUE_NAME
     )
     for collection in collections.keys():
-        collection_bags = [x.keys()[0] for x in collections[collection]]
+        collection_bags = [list(bag_record.keys())[0] for bag_record in collections[collection]]
         items = collections[collection]
         ingest = signature(
             "dspaceq.tasks.tasks.dspace_ingest",
