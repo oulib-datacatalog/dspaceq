@@ -26,7 +26,6 @@ def test_add():
     assert add(21, 21) == 42
 
 
-#@pytest.mark.skip(reason="not complete")
 def test_dspace_ingest(tmpdir):
     mock_boto3 = patch('dspaceq.tasks.tasks.boto3').start()
     mock_mkdtemp = patch('dspaceq.tasks.tasks.mkdtemp', return_value=str(tmpdir)).start()
@@ -34,7 +33,6 @@ def test_dspace_ingest(tmpdir):
     mock_rmtree = patch('dspaceq.tasks.tasks.rmtree').start()
     mock_mkdir = patch('dspaceq.tasks.tasks.mkdir').start()
 
-    # TODO: complete creation of temporary mapfile and populate test values
     mapfile = tmpdir / "mapfile"
     mapfile = Path(mapfile)
     mapfile.touch()
@@ -45,7 +43,6 @@ def test_dspace_ingest(tmpdir):
     item_dir = Path(tmpdir / 'item_0')
     item_dir.mkdir()
     
-    # TODO: test of check_calls
     bag_details = [{"bag name": {"files": ["committee.txt", "abstract.txt", "file.pdf"], "metadata": "xml", "metadata_ou": "ou.xml"}}]
     assert dspace_ingest(bag_details, collection="") == {"success":{'bag name': 'handle'}}
     
@@ -61,7 +58,8 @@ def test_dspace_ingest(tmpdir):
     mock_boto3.resource.assert_called_with('s3')
     mock_rmtree.assert_called_with(str(tmpdir))
     assert mock_rmtree.call_count == 2
-    
+
+
 def test_ingest_thesis_dissertation():
     mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
     mock_check_missing = patch('dspaceq.tasks.tasks.check_missing').start()
