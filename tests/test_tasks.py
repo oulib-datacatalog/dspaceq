@@ -3,16 +3,23 @@ import posix
 #from subprocess import CalledProcessError
 import sys
 from unittest import TestCase
+<<<<<<< HEAD
 try:
     from pathlib2 import Path
 except ImportError: 
     from pathlib import Path
+=======
+>>>>>>> origin/test
 import os
 
-try:
-    from unittest.mock import MagicMock, Mock, patch
-except ImportError:
+from six import PY2
+
+if PY2:
     from mock import MagicMock, Mock, patch
+    from pathlib2 import Path
+else:
+    from unittest.mock import MagicMock, Mock, patch
+    from pathlib import Path
 
 import pytest
 from requests.exceptions import HTTPError
@@ -26,7 +33,6 @@ def test_add():
     assert add(21, 21) == 42
 
 
-#@pytest.mark.skip(reason="not complete")
 def test_dspace_ingest(tmpdir):
     mock_boto3 = patch('dspaceq.tasks.tasks.boto3').start()
     mock_mkdtemp = patch('dspaceq.tasks.tasks.mkdtemp', return_value=str(tmpdir)).start()
@@ -34,7 +40,6 @@ def test_dspace_ingest(tmpdir):
     mock_rmtree = patch('dspaceq.tasks.tasks.rmtree').start()
     mock_mkdir = patch('dspaceq.tasks.tasks.mkdir').start()
 
-    # TODO: complete creation of temporary mapfile and populate test values
     mapfile = tmpdir / "mapfile"
     mapfile = Path(mapfile)
     mapfile.touch()
@@ -45,7 +50,6 @@ def test_dspace_ingest(tmpdir):
     item_dir = Path(tmpdir / 'item_0')
     item_dir.mkdir()
     
-    # TODO: test of check_calls
     bag_details = [{"bag name": {"files": ["committee.txt", "abstract.txt", "file.pdf"], "metadata": "xml", "metadata_ou": "ou.xml"}}]
     assert dspace_ingest(bag_details, collection="") == {"success":{'bag name': 'handle'}}
     
@@ -61,7 +65,8 @@ def test_dspace_ingest(tmpdir):
     mock_boto3.resource.assert_called_with('s3')
     mock_rmtree.assert_called_with(str(tmpdir))
     assert mock_rmtree.call_count == 2
-    
+
+
 def test_ingest_thesis_dissertation():
     mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
     mock_check_missing = patch('dspaceq.tasks.tasks.check_missing').start()
@@ -82,13 +87,12 @@ def test_ingest_thesis_dissertation():
         }
 
     mock_list_s3_files.return_value = ['test.pdf', 'test.txt']
-    mock_check_missing.return_value = [(9876543210987,[])]
+    mock_check_missing.return_value = [(9876543210987,[])]  # no missing metedata fields in Alma
     mock_etree_tostring.return_value = '<dc xmlns="http://www.loc.gov/MARC21/slim">test</dc>'
     mock_guess_collection.return_value = 'TEST thesis'
 
-    with pytest.raises(ValueError):
-        assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
-        assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
+    assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
+    assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
         
 def test_notify_dspace_etd_loaded():
     mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()

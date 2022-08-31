@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 import sys
 
-try:
-    from unittest.mock import MagicMock, Mock, patch
-except ImportError:
+from six import PY2, ensure_text
+
+if PY2:
     from mock import MagicMock, Mock, patch
+    from pathlib2 import Path
+else:
+    from unittest.mock import MagicMock, Mock, patch
+    from pathlib import Path
+
 from requests.exceptions import HTTPError
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds, get_bib_record
+    get_requested_etds, get_bib_record, check_missing
 
 from bson.objectid import ObjectId
 
@@ -205,8 +210,17 @@ def test_get_bib_record_connection_issues(mock_get):
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
     mock_get.side_effect = ConnectionError()
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
+<<<<<<< HEAD
     
     
 #TODO: test missing_fields()
 #TODO: test get_bib_record()
 #TODO: test get_requested_etds()
+=======
+
+
+@patch("dspaceq.tasks.utils.get_bib_record")
+def test_check_missing_with_missing_metadata(mock_get_bib_record):
+    mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')])]
+>>>>>>> origin/test

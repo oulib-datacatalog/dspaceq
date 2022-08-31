@@ -15,6 +15,7 @@ setup(name='dspaceq',
           'jinja2',
           'boto3',
           'lxml',
+          'six',
       ],
       include_package_data=True,
 )
