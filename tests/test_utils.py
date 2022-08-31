@@ -14,7 +14,7 @@ from requests.exceptions import HTTPError
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds, get_bib_record, check_missing
+    get_requested_etds, get_bib_record, check_missing, missing_fields
 
 from bson.objectid import ObjectId
 
@@ -209,18 +209,28 @@ def test_get_bib_record_connection_issues(mock_get):
     mock_get.side_effect = ConnectTimeout()
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
     mock_get.side_effect = ConnectionError()
-    assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
-<<<<<<< HEAD
-    
-    
-#TODO: test missing_fields()
-#TODO: test get_bib_record()
-#TODO: test get_requested_etds()
-=======
-
+    assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}  
 
 @patch("dspaceq.tasks.utils.get_bib_record")
 def test_check_missing_with_missing_metadata(mock_get_bib_record):
     mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')])]
->>>>>>> origin/test
+
+
+def test_missing_fields():
+    """
+    Test all the three cases of bib_record argument
+    1. bib_record is None
+    2. bib_record is not None but not dict
+    3. bib_record is not None and is dict
+    """
+    assert missing_fields(None) == ["Could not find record!"]
+    bib_record = {
+        "245: Title": "record/datafield[@tag=245]"
+    }
+    assert list(missing_fields(bib_record)) == list(bib_record.values())
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    assert missing_fields(bib_record) == ['502: Thesis/Diss Tag', '690: School']
+
+#TODO: test get_bib_record()
+#TODO: test get_requested_etds()
