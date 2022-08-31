@@ -205,3 +205,8 @@ def test_get_bib_record_connection_issues(mock_get):
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
     mock_get.side_effect = ConnectionError()
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}
+    
+    
+#TODO: test missing_fields()
+#TODO: test get_bib_record()
+#TODO: test get_requested_etds()

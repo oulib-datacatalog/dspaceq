@@ -92,8 +92,10 @@ def test_ingest_thesis_dissertation():
         
 def test_notify_dspace_etd_loaded():
     mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()
-    mock_get_mmid = patch('dspaceq.tasks.utils.get_mmid').start()
+    mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
     
     arg = {'success': {}}
     assert notify_dspace_etd_loaded(arg) == "No items to ingest - no notification sent"
-    assert notify_dspace_etd_loaded(arg) == " "
+    
+    arg = {'success': {'bagname': 'url'}}
+    assert notify_dspace_etd_loaded(arg) == "Ingest notification sent"
