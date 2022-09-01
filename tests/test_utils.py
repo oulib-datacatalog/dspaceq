@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys
+import pytest
 
 from six import PY2, ensure_text
+
 
 if PY2:
     from mock import MagicMock, Mock, patch
@@ -11,6 +13,7 @@ else:
     from pathlib import Path
 
 from requests.exceptions import HTTPError
+import requests
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
@@ -211,11 +214,11 @@ def test_get_bib_record_connection_issues(mock_get):
     mock_get.side_effect = ConnectionError()
     assert get_bib_record("placeholder_mmsid") == {"error": "Alma Connection Error - try again later."}  
 
+@pytest.mark.parametrize("number", range(5))
 @patch("dspaceq.tasks.utils.get_bib_record")
-def test_check_missing_with_missing_metadata(mock_get_bib_record):
+def test_check_missing_with_missing_metadata(mock_get_bib_record, number):
     mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')])]
-
 
 def test_missing_fields():
     """
@@ -230,7 +233,19 @@ def test_missing_fields():
     }
     assert list(missing_fields(bib_record)) == list(bib_record.values())
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
-    assert missing_fields(bib_record) == ['502: Thesis/Diss Tag', '690: School']
-
-#TODO: test get_bib_record()
+    assert missing_fields(bib_record) == [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')]
+@patch("dspaceq.tasks.utils.requests.get")
+def test_get_bib_record(mock_requests_get):
+#TODO: checkout why this is not working?
+    #mock_requests_get.status_code.return_value = 200
+    #mock_requests_get.content.return_value = "testing ascii"
+    
+    
+    assert requests.codes.ok == 200
+    mock_requests_get.return_value = Mock(status_code=200, content="testing ascii")
+    assert get_bib_record('123') == 'testing ascii'
+    
+    mock_requests_get.return_value = Mock(status_code=404, content="testing ascii")
+    assert get_bib_record('123') == {"error": "Alma server returned code: 404"}
+    
 #TODO: test get_requested_etds()
