@@ -161,7 +161,8 @@ def test_get_requested_etds(mock_backend):
        "email": "requester@test.ou.edu",
        "other_identifiers": ""}
     ]
-    mock_backend.database.client.catalog.etd.find.return_value = result
+    #mock_backend.database.client.catalog.etd.find.return_value = result
+    mock_backend.return_value.database.client.catalog.etd.find = result
     response = get_requested_etds("9876543210123")
     assert response == result
 
@@ -236,16 +237,17 @@ def test_missing_fields():
     assert missing_fields(bib_record) == [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')]
 @patch("dspaceq.tasks.utils.requests.get")
 def test_get_bib_record(mock_requests_get):
-#TODO: checkout why this is not working?
-    #mock_requests_get.status_code.return_value = 200
-    #mock_requests_get.content.return_value = "testing ascii"
-    
-    
-    assert requests.codes.ok == 200
     mock_requests_get.return_value = Mock(status_code=200, content="testing ascii")
     assert get_bib_record('123') == 'testing ascii'
     
+    mock_requests_get.side_effect = ConnectionError('Connection Error')
+    assert get_bib_record('123') == {"error": "Alma Connection Error - try again later."}
+    assert requests.codes.ok == 200
+
+    mock_requests_get.side_effect = None
     mock_requests_get.return_value = Mock(status_code=404, content="testing ascii")
     assert get_bib_record('123') == {"error": "Alma server returned code: 404"}
     
 #TODO: test get_requested_etds()
+def test_get_requested_etds():
+    pass
