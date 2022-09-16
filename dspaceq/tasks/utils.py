@@ -10,6 +10,7 @@ from bson.objectid import ObjectId
 from itertools import compress
 from json import loads
 from lxml import etree
+from collections import OrderedDict
 
 from .config import alma_url
 
@@ -81,8 +82,9 @@ def get_bib_record(mmsid):
         else:
             logging.error(result.content)
             return {"error": "Alma server returned code: {0}".format(result.status_code)}
-    except:
+    except Exception as e:
         logging.error("Alma Connection Error")
+        logging.error(e)
         return {"error": "Alma Connection Error - try again later."}
 
 
@@ -131,14 +133,14 @@ def missing_fields(bib_record):
             return True
 
     # Fields to verify
-    xpath_lookup = {
-        "245: Title": "record/datafield[@tag=245]",
-        "100: Author": "record/datafield[@tag=100]",
-        "260/264: Publish Year": "record/datafield[@tag=264]|record/datafield[@tag=260]",
-        "502: Thesis/Diss Tag": "record/datafield[@tag=502]",
-        "690: School": "record/datafield[@tag=690]",
-        "600/610/611/630/650/651: Subject Heading": "record/datafield[@tag=600]|record/datafield[@tag=610]|record/datafield[@tag=611]|record/datafield[@tag=630]|record/datafield[@tag=650]|record/datafield[@tag=651]"
-    }
+    xpath_lookup = OrderedDict([
+        ("245: Title", "record/datafield[@tag=245]"),
+        ("100: Author", "record/datafield[@tag=100]"),
+        ("260/264: Publish Year", "record/datafield[@tag=264]|record/datafield[@tag=260]"),
+        ("502: Thesis/Diss Tag", "record/datafield[@tag=502]"),
+        ("690: School", "record/datafield[@tag=690]"),
+        ("600/610/611/630/650/651: Subject Heading", "record/datafield[@tag=600]|record/datafield[@tag=610]|record/datafield[@tag=611]|record/datafield[@tag=630]|record/datafield[@tag=650]|record/datafield[@tag=651]")
+    ])
     if bib_record is not None and type(bib_record) is not dict:
         root = etree.fromstring(bib_record)
         missing = map(missing_or_blank, xpath_lookup.values())

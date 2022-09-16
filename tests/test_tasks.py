@@ -17,7 +17,7 @@ else:
 import pytest
 from requests.exceptions import HTTPError
 
-from dspaceq.tasks.tasks import add, ingest_thesis_dissertation, dspace_ingest
+from dspaceq.tasks.tasks import add, ingest_thesis_dissertation, dspace_ingest, notify_dspace_etd_loaded
 
 from dspaceq.tasks.utils import FailedIngest
 
@@ -87,5 +87,12 @@ def test_ingest_thesis_dissertation():
     assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
     assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
         
-def test_notify_etd_missing_fields():
+def test_notify_dspace_etd_loaded():
     mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()
+    mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
+    
+    arg = {'success': {}}
+    assert notify_dspace_etd_loaded(arg) == "No items to ingest - no notification sent"
+    
+    arg = {'success': {'bagname': 'url'}}
+    #assert notify_dspace_etd_loaded(arg) == "Ingest notification sent"
