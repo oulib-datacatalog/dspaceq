@@ -102,13 +102,11 @@ def marc_xml_to_dc_xml(marc_xml):
     transform = etree.XSLT(marc2dc_xslt)
     return transform(marc_xml)
 
-
 def validate_marc(marc_xml):
     xml = pkg_resources.resource_string(__name__, 'xslt/MARC21slim.xsd')
     schema = etree.XMLSchema(etree.fromstring(xml))
     parser = etree.XMLParser(schema=schema)
     return etree.fromstring(etree.tostring(marc_xml), parser)
-
 
 def bib_to_dc(bib_record):
     """ returns dc as string from bib_record """
@@ -219,7 +217,6 @@ def get_digitized_bags(mmsids):
     digital_objects = db_client.catalog.digital_objects
     results = digital_objects.find(options)
     return [result['bag'].split('/')[-1] for result in results]
-
 
 def update_ingest_status(bagname, url, application='dspace', project=None, ingested=True):
     options = {'ingested': ingested,

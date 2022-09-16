@@ -17,7 +17,7 @@ import requests
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds, get_bib_record, check_missing, missing_fields
+    get_requested_etds, get_bib_record, check_missing, missing_fields, get_digitized_bags
 
 from bson.objectid import ObjectId
 
@@ -166,7 +166,6 @@ def test_get_requested_etds(mock_backend):
     response = get_requested_etds("9876543210123")
     assert response == result
 
-
 @patch("dspaceq.tasks.utils.Celery.backend")
 def test_get_requested_etds_no_results(mock_backend):
     result = []
@@ -235,6 +234,7 @@ def test_missing_fields():
     assert list(missing_fields(bib_record)) == list(bib_record.values())
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     assert missing_fields(bib_record) == [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')]
+    
 @patch("dspaceq.tasks.utils.requests.get")
 def test_get_bib_record(mock_requests_get):
     mock_requests_get.return_value = Mock(status_code=200, content="testing ascii")
@@ -247,7 +247,33 @@ def test_get_bib_record(mock_requests_get):
     mock_requests_get.side_effect = None
     mock_requests_get.return_value = Mock(status_code=404, content="testing ascii")
     assert get_bib_record('123') == {"error": "Alma server returned code: 404"}
-    
-#TODO: test get_requested_etds()
-def test_get_requested_etds():
-    pass
+
+@patch("dspaceq.tasks.utils.Celery.backend")
+def test_get_digitized_bags(mock_backend):
+    result = [
+      {"_id": ObjectId(b"123456789012"),
+       "proquest_id": "",
+       "call_number": "OU THESIS FLO",
+       "name": "Requestor One",
+       "title": "Some Title One",
+       "creator": "Author One",
+       "mmsid": "9876543210123",
+       "year": "2019",
+       "email": "requester@test.ou.edu",
+       "other_identifiers": ""},
+      {"_id": ObjectId(b"210987654321"),
+       "proquest_id": "",
+       "call_number": "OU THESIS BIB",
+       "name": "Requestor Two",
+       "title": "Some Title Two",
+       "creator": "Author Two",
+       "mmsid": "3210123456789",
+       "year": "2013",
+       "email": "requestor@test.ou.edu",
+       "other_identifiers": ""}]
+    options = {'bag':{'$regex': []},
+               'locations.s3.exists': True,
+               'application.dspace.ingested': {'$ne': True},
+              }
+    mock_backend.database.client.catalog.digital_objects.find.return_value = options
+    assert get_digitized_bags("") == []
