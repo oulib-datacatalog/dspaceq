@@ -17,22 +17,16 @@ else:
 import pytest
 from requests.exceptions import HTTPError
 
-from dspaceq.tasks.tasks import add, ingest_thesis_dissertation, dspace_ingest, notify_dspace_etd_loaded
+from dspaceq.tasks.tasks import add, ingest_thesis_dissertation, dspace_ingest, notify_dspace_etd_loaded, list_missing_metadata_etd
 
 from dspaceq.tasks.utils import FailedIngest
 
     
 def test_add():
     assert add(21, 21) == 42
-
-
-def test_dspace_ingest(tmpdir):
-    mock_boto3 = patch('dspaceq.tasks.tasks.boto3').start()
-    mock_mkdtemp = patch('dspaceq.tasks.tasks.mkdtemp', return_value=str(tmpdir)).start()
-    mock_check_call = patch('dspaceq.tasks.tasks.check_call').start()
-    mock_rmtree = patch('dspaceq.tasks.tasks.rmtree').start()
-    mock_mkdir = patch('dspaceq.tasks.tasks.mkdir').start()
-
+    
+def test_dspace_ingest(tmpdir, mock_boto3, mock_mkdtemp, mock_check_call, mock_rmtree, mock_mkdir):
+    mock_mkdtemp.return_value = str(tmpdir)
     mapfile = tmpdir / "mapfile"
     mapfile = Path(mapfile)
     mapfile.touch()
@@ -58,39 +52,36 @@ def test_dspace_ingest(tmpdir):
     mock_boto3.resource.assert_called_with('s3')
     mock_rmtree.assert_called_with(str(tmpdir))
     assert mock_rmtree.call_count == 2
+ 
+def test_ingest_thesis_dissertation(mock_get_mmsid, mock_list_s3_files, mock_check_missing, mock_bib_metadata, mock_etree, mock_guess_collection, mock_celery_signature, mock_celery_group):
+    mock_get_mmsid.return_value = "9876543210987"
+    mock_list_s3_files.return_value = ['test.pdf', 'test.txt']
+    mock_bib_metadata[0].return_value = "9876543210987"
+    mock_etree.return_value = '<dc xmlns="http://www.loc.gov/MARC21/slim">test</dc>'
+    mock_guess_collection.return_value = 'TEST thesis'
 
-
-def test_ingest_thesis_dissertation():
-    mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
-    mock_check_missing = patch('dspaceq.tasks.tasks.check_missing').start()
-    mock_list_s3_files = patch('dspaceq.tasks.tasks.list_s3_files').start()
-    mock_get_bib_record = patch('dspaceq.tasks.tasks.get_bib_record').start()
-    mock_get_marc_from_bib = patch('dspaceq.tasks.tasks.get_marc_from_bib').start()
-    mock_validate_marc = patch('dspaceq.tasks.tasks.validate_marc').start()
-    mock_marc_xml_to_dc_xml = patch('dspaceq.tasks.tasks.marc_xml_to_dc_xml').start()
-    mock_etree_tostring = patch('dspaceq.tasks.tasks.etree.tostring').start()
-    mock_guess_collection = patch('dspaceq.tasks.tasks.guess_collection').start()
-    mock_celery_signature = patch('dspaceq.tasks.tasks.signature').start()
-    mock_celery_group = patch('dspaceq.tasks.tasks.group').start()
-
-    mock_get_mmsid.return_value = '9876543210987'
     mock_check_missing.return_value = [(9876543210987, 'Test Error')]
     assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {
         'Kicked off ingest': [], 'failed': {'Smith_2019_9876543210987': 'Missing required metadata in Alma - contact cataloging group'}
         }
-
-    mock_list_s3_files.return_value = ['test.pdf', 'test.txt']
-    mock_check_missing.return_value = [(9876543210987,[])]  # no missing metedata fields in Alma
-    mock_etree_tostring.return_value = '<dc xmlns="http://www.loc.gov/MARC21/slim">test</dc>'
-    mock_guess_collection.return_value = 'TEST thesis'
-
+    
+    mock_check_missing.return_value = [(9876543210987,[])]
     assert ingest_thesis_dissertation('Smith_2019_9876543210987') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
     assert ingest_thesis_dissertation('Smith_2019_9876543210987', 'TEST thesis') == {'Kicked off ingest': ['Smith_2019_9876543210987'], 'failed': {}}
         
-def test_notify_dspace_etd_loaded():
-    mock_get_requested_etds = patch('dspaceq.tasks.tasks.get_requested_etds').start()
-    mock_get_mmsid = patch('dspaceq.tasks.tasks.get_mmsid').start()
+def test_list_missing_metadata_etd(mock_get_mmsid, mock_check_missing, mock_get_digitized_bags,mock_get_requested_etds):
+    mock_check_missing.return_value = [(9876543210987, 'Test Error')]
+    assert list_missing_metadata_etd('Smith_2019_9876543210987') == [(9876543210987, 'Test Error')]
+    mock_check_missing.return_value = [(9876543210987,[])]
+
+    mock_get_requested_etds.return_value = []
+    mock_get_digitized_bags.return_value = []
+    mock_get_mmsid.return_value = "9876543210987"
+    assert list_missing_metadata_etd('') == "No items found ready for ingest"
+    mock_get_requested_etds.assert_called_with('.*')
+        
     
+def test_notify_dspace_etd_loaded():    
     arg = {'success': {}}
     assert notify_dspace_etd_loaded(arg) == "No items to ingest - no notification sent"
     

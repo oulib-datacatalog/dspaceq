@@ -15,9 +15,8 @@ from datetime import datetime
 
 
 
-@patch("dspaceq.tasks.reports.create_engine")
-def test_report_embargoed_items_invalid_dates(engine_mock):
-    engine_mock.Engine.connect.return_value = sentinel
+def test_report_embargoed_items_invalid_dates(mock_create_engine):
+    mock_create_engine.Engine.connect.return_value = sentinel
     assert report_embargoed_items("2019-09-01", "2019") == {'ERROR': 'end_date does not use YYYY-MM-DD format'}
     assert report_embargoed_items("2019-09-01", "2019-09") == {'ERROR': 'end_date does not use YYYY-MM-DD format'}
     assert report_embargoed_items("2019-09-01", "2019/09/30") == {'ERROR': 'end_date does not use YYYY-MM-DD format'}
@@ -26,17 +25,14 @@ def test_report_embargoed_items_invalid_dates(engine_mock):
         report_embargoed_items("2019-09-01")
         report_embargoed_items({"end_date": "2019-09-30"})
 
-
-@patch("dspaceq.tasks.reports.create_engine")
-def test_report_embargoed_items_valid_dates(engine_mock):
-    engine_mock.Engine.connect.return_value = sentinel
+def test_report_embargoed_items_valid_dates(mock_create_engine):
+    mock_create_engine.Engine.connect.return_value = sentinel
     assert report_embargoed_items("2019-09-01", "2019-09-30") == []
 
 
-@patch("dspaceq.tasks.reports.create_engine")
-def test_report_embargoed_items(engine_mock):
+def test_report_embargoed_items(mock_create_engine):
     now = datetime.now()
-    engine_mock.return_value.connect.return_value.execute.return_value.fetchall.side_effect = [
+    mock_create_engine.return_value.connect.return_value.execute.return_value.fetchall.side_effect = [
         [["handle/1234", "item_id", now]],
         {AUTHOR: "Tyler",
          URI: "handle/1234",
@@ -45,7 +41,6 @@ def test_report_embargoed_items(engine_mock):
          DEPARTMENT: "Info"}
     ]
     assert report_embargoed_items("2019-09-01", "2019-09-30") == [['handle/1234', 'Tyler', 'Reporting Test', 'Info', now.isoformat()]]
-
 
 def test_sqlalchemy_sql_template():
     template = "select * from :table;"
