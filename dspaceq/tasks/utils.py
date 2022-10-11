@@ -24,6 +24,11 @@ app = Celery()
 app.config_from_object(celeryconfig)
 
 
+def remove_carriage_returns_binary(text):
+    """ helper to cleanup text originating from Windows """
+    return text.replace(b'\r', b'')
+
+
 def get_mmsid(bag):
     """ get the mmsid from end of bag name """
     # The MMS ID can be 8 to 19 digits long (with the first two digits referring to the record type and
