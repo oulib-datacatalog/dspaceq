@@ -173,7 +173,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         for file in files:
             if 'committee.txt' in file.lower():
                 obj = s3.Object(s3_bucket, file)
-                committee = remove_carriage_returns(obj.get()['Body'].read().decode('utf-8'))
+                committee = remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8'))
              # If committee.txt is present, add contents to dc metadata
                 if committee:
                     for committee_member in committee.split("\n"):
@@ -184,7 +184,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
-                abstract = remove_carriage_returns(obj.get()['Body'].read().decode('utf-8'))
+                abstract = remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8'))
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
                     a.text = abstract
