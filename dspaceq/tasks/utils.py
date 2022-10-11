@@ -10,6 +10,7 @@ from bson.objectid import ObjectId
 from itertools import compress
 from json import loads
 from lxml import etree
+from six import ensure_text
 
 from .config import alma_url
 
@@ -24,9 +25,9 @@ app = Celery()
 app.config_from_object(celeryconfig)
 
 
-def remove_carriage_returns_binary(text):
+def remove_carriage_returns(text):
     """ helper to cleanup text originating from Windows """
-    return text.replace(b'\r', b'')
+    return ensure_text(text).replace('\r', '')
 
 
 def get_mmsid(bag):

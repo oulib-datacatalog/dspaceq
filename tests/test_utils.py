@@ -9,9 +9,15 @@ from requests.exceptions import HTTPError
 from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
-    get_requested_etds, get_bib_record
+    get_requested_etds, get_bib_record, remove_carriage_returns
 
 from bson.objectid import ObjectId
+
+
+def test_remove_carriage_returns():
+    assert_equal(remove_carriage_returns("test\r\ntest"), "test\ntest")
+    assert_equal(remove_carriage_returns("test\r\n"), "test\n")
+    assert_equal(remove_carriage_returns("\r\ntest"), "\ntest")
 
 
 def test_get_mmsid_in_name():
