@@ -2,7 +2,7 @@
 #ez_setup.use_setuptools()
 from setuptools import setup, find_packages
 setup(name='dspaceq',      
-      version='0.2.1',
+      version='0.2.1a',
       packages= find_packages(),
       package_data={'dspaceq':['tasks/xslt/*']},
       install_requires=[
@@ -14,7 +14,6 @@ setup(name='dspaceq',
           'jinja2',
           'boto3',
           'lxml',
-          'six',
       ],
       include_package_data=True,
 )
