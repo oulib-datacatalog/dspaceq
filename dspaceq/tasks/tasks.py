@@ -187,7 +187,12 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                 abstract = remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8'))
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
-                    a.text = abstract
+                    try:
+                        a.text = abstract
+                    except ValueError as e:
+                        logging.error(e)
+                        logging.error(abstract)
+                        raise Exception()
                     dc_xml_element.insert(0, a)
 
             else:
