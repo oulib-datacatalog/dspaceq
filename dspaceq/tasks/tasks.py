@@ -192,6 +192,11 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                     except ValueError as e:
                         logging.error(e)
                         logging.error(abstract)
+                        abstract = escape_xml(obj.get()['Body'].read())
+                    try:
+                        a.text = abstract
+                    except ValueError as e:
+                        logging.error(e)
                         raise Exception()
                     dc_xml_element.insert(0, a)
 
