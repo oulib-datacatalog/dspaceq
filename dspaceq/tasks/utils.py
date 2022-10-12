@@ -10,6 +10,8 @@ from bson.objectid import ObjectId
 from itertools import compress
 from json import loads
 from lxml import etree
+from xml.sax.saxutils import escape
+
 
 from .config import alma_url
 
@@ -27,6 +29,13 @@ app.config_from_object(celeryconfig)
 def remove_carriage_returns_unicode(text):
     """ helper to cleanup text originating from Windows """
     return (text).replace(u'\r', u'')
+
+
+def escape_xml(text):
+    text = escape(text)
+    text = text.replace("\"", "&quot;")
+    text = text.replace("'", "&apos;")
+    return text
 
 
 def get_mmsid(bag):

@@ -4,7 +4,6 @@ from os import path
 from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
-from xml.sax.saxutils import escape
 
 from celery.task import task
 from celery import signature, group, Celery
@@ -174,7 +173,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         for file in files:
             if 'committee.txt' in file.lower():
                 obj = s3.Object(s3_bucket, file)
-                committee = escape(remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8')))
+                committee = escape_xml(remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8')))
              # If committee.txt is present, add contents to dc metadata
                 if committee:
                     for committee_member in committee.split("\n"):
@@ -185,7 +184,7 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
-                abstract = escape(remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8')))
+                abstract = escape_xml(remove_carriage_returns_unicode(obj.get()['Body'].read().decode('utf-8')))
                 if abstract:
                     a = etree.Element("dcvalue", element='description', qualifier='abstract')
                     try:
