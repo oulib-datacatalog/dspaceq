@@ -479,7 +479,6 @@ def list_missing_metadata_etd(bag=""):
         return "No items found ready for ingest"
     return check_missing([get_mmsid(bag) for bag in bags])
 
-
 @app.task()
 def verify_good_bags(bag="", collection="",): #dspace_endpoint=REST_ENDPOINT):
     """

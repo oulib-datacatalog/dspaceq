@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 import sys
+import os
+from this import s
+from bson.objectid import ObjectId
 import pytest
 from lxml import etree
+import pkg_resources
 
 from six import PY2, ensure_text
+import boto3
 
 
 if PY2:
@@ -19,7 +24,9 @@ from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
     get_requested_etds, get_bib_record, check_missing, missing_fields, get_digitized_bags, get_alma_url_field,\
-    get_marc_from_bib
+    get_marc_from_bib, update_ingest_status, list_s3_files, chunk_list, guess_collection, marc_xml_to_dc_xml, validate_marc
+    
+        
 
 from bson.objectid import ObjectId
 
@@ -232,3 +239,45 @@ def test_get_marc_from_bib():
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()
     assert etree.tostring(get_marc_from_bib(bib_record)) ==  record
+
+def test_get_digitized_bags(mock_celery_backend):
+    results = [{'bag':'shareok/bagname_123456789',
+               'locations.s3.exists': True
+              },
+               {'bag':'shareok/digitized',
+               'locations.s3.exists': True,
+               }
+              ]
+    mock_celery_backend.database.client.catalog.digital_objects.find.return_value = results
+    assert get_digitized_bags('123456789') == ['bagname_123456789', 'digitized']
+    
+def test_update_ingest_status(mock_celery_backend):
+    mock_celery_backend.database.client.catalog.digital_objects.find_one.return_value = {'bag':'shareok/bagname', '_id': 'aaaaaaaaaaaaaaaaaaaaaaaa'}
+    mock_celery_backend.database.client.catalog.digital_objects.update.return_value = {'ok': 1}
+    assert update_ingest_status('bagname','url', application='dspace', project=None, ingested=True) == None
+
+def test_list_s3_files(s3_test_bucket):
+    bucket = os.getenv('DEFAULT_BUCKET')
+    bag = 'testbag'
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/image.txt'.format(bag), Body='test1')
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/image.pdf'.format(bag), Body='test1')
+
+    assert sorted(list_s3_files(bag)) == ['private/shareok/testbag/data/image.pdf', 'private/shareok/testbag/data/image.txt']
+    
+def test_chunk_list():
+    _list = [1,2,3,4,5,6,7,8,9,10]
+    assert list(chunk_list(_list, 3)) == [[1,2,3], [4,5,6], [7,8,9], [10]]
+    _list = ['filename', 1, 'bagname', 2, 'shareok', 3, 'test', 4, 'cybercom', 5]
+    assert list(chunk_list(_list, 4)) == [['filename', 1, 'bagname', 2], ['shareok', 3, 'test', 4], ['cybercom', 5]]
+    
+def test_get_alma_url_field():
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    assert get_alma_url_field(bib_record) == None
+    
+def test_guess_collection():
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    assert guess_collection(bib_record) == '11244/23528'
+    
+def test_validate_marc():
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()

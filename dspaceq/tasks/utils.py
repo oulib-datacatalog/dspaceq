@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import boto3
+import os
 import pkg_resources
 import re
 import requests
@@ -114,7 +115,7 @@ def bib_to_dc(bib_record):
 
 
 def list_s3_files(bag_name):
-    s3_bucket='ul-bagit'
+    s3_bucket=os.getenv('DEFAULT_BUCKET','ul-bagit')
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
     s3 = boto3.client('s3')
     files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
@@ -245,5 +246,5 @@ def update_ingest_status(bagname, url, application='dspace', project=None, inges
             document['application'][application][option] = value
         if document != {}:  # prevent overwriting with blank document
             status = digital_objects.update({'_id': ObjectId(document['_id'])}, document)
-            if not status['ok']:
+            if not status['nModified']:
                 logging.error("Could not update dspace ingest status: {0}".format(document['bag']))
