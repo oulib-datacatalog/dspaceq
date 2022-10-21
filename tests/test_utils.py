@@ -6,6 +6,7 @@ from bson.objectid import ObjectId
 import pytest
 from lxml import etree
 import pkg_resources
+import logging
 
 from six import PY2, ensure_text
 import boto3
@@ -253,7 +254,7 @@ def test_get_digitized_bags(mock_celery_backend):
     
 def test_update_ingest_status(mock_celery_backend):
     mock_celery_backend.database.client.catalog.digital_objects.find_one.return_value = {'bag':'shareok/bagname', '_id': 'aaaaaaaaaaaaaaaaaaaaaaaa'}
-    mock_celery_backend.database.client.catalog.digital_objects.update.return_value = {'ok': 1}
+    mock_celery_backend.database.client.catalog.digital_objects.update.return_value = {'nModified': 1}
     assert update_ingest_status('bagname','url', application='dspace', project=None, ingested=True) == None
 
 def test_list_s3_files(s3_test_bucket):
