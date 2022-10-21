@@ -259,7 +259,7 @@ def notify_etd_missing_fields():
     Sends email to collections to notify of missing fields in Alma
     for requested Theses and Disertations
     """
-    emailtmplt = """
+    emailtmplt = r"""
     The following ETD requests have missing fields:
     The bags are accessible on norfile: ul-bagit\shareok\*
     {% for bag in bags %}========================
@@ -318,7 +318,7 @@ def notify_dspace_etd_loaded(args):
         for request in request_details:
             request['url'] = ingested_url_lookup[request['mmsid']]
 
-        emailtmplt = """
+        emailtmplt = r"""
         The following ETD requests have been loaded into the repository:
         {% for request in request_details %}========================
         Requester: {{ request.name }}
