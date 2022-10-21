@@ -3,6 +3,11 @@
 # C extensions
 *.so
 
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
 # Packages
 *.egg
 *.egg-info
