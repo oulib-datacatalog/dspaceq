@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-from this import s
 from bson.objectid import ObjectId
 import pytest
 from lxml import etree
-import pkg_resources
 import logging
 
 from six import PY2, ensure_text
