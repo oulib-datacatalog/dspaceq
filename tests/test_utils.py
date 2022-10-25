@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-from this import s
 from bson.objectid import ObjectId
 import pytest
 from lxml import etree
-import pkg_resources
+from lxml.etree import XMLSyntaxError
 import logging
-
 from six import PY2, ensure_text
 import boto3
 
@@ -272,13 +270,22 @@ def test_chunk_list():
     assert list(chunk_list(_list, 4)) == [['filename', 1, 'bagname', 2], ['shareok', 3, 'test', 4], ['cybercom', 5]]
     
 def test_get_alma_url_field():
-    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
-    assert get_alma_url_field(bib_record) == None
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_url_field.xml"), "rb").read()
+    assert get_alma_url_field(bib_record) == 'https://shareok.org/11244/325437'
     
 def test_guess_collection():
-    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_url_field.xml"), "rb").read()
     assert guess_collection(bib_record) == '11244/23528'
     
 def test_validate_marc():
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()
+    bib_record_etree = etree.fromstring(bib_record)
+    with pytest.raises(XMLSyntaxError):
+        validate_marc(bib_record_etree)
+    record_etree = etree.fromstring(record)
+    assert etree.tostring(validate_marc(record_etree)) == record
+    
+
+    
+    

@@ -113,14 +113,12 @@ def bib_to_dc(bib_record):
     """ returns dc as string from bib_record """
     return etree.tostring(marc_xml_to_dc_xml(validate_marc(get_marc_from_bib(bib_record))))
 
-
 def list_s3_files(bag_name):
     s3_bucket=os.getenv('DEFAULT_BUCKET','ul-bagit')
     s3_destination='private/shareok/{0}/data/'.format(bag_name)
     s3 = boto3.client('s3')
     files = [x['Key'] for x in s3.list_objects(Bucket=s3_bucket, Prefix=s3_destination)['Contents']]
     return [f for f in files if f.endswith((".pdf", ".txt"))]
-
 
 def missing_fields(bib_record):
     def missing_or_blank(xpath_val):
