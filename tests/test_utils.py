@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 import pytest
 from lxml import etree
 from lxml.etree import XMLSyntaxError
+import pkg_resources
 import logging
 from six import PY2, ensure_text
 import boto3
@@ -23,7 +24,8 @@ from requests import codes, ConnectionError, ConnectTimeout
 
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
     get_requested_etds, get_bib_record, check_missing, missing_fields, get_digitized_bags, get_alma_url_field,\
-    get_marc_from_bib, update_ingest_status, list_s3_files, chunk_list, guess_collection, marc_xml_to_dc_xml, validate_marc
+    get_marc_from_bib, update_ingest_status, list_s3_files, chunk_list, guess_collection, marc_xml_to_dc_xml, validate_marc,\
+    bib_to_dc
     
         
 
@@ -277,6 +279,9 @@ def test_guess_collection():
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_url_field.xml"), "rb").read()
     assert guess_collection(bib_record) == '11244/23528'
     
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_502_sub_a.xml"), "rb").read()
+    assert guess_collection(bib_record) == '11244/10476'
+    
 def test_validate_marc():
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()
@@ -285,6 +290,16 @@ def test_validate_marc():
         validate_marc(bib_record_etree)
     record_etree = etree.fromstring(record)
     assert etree.tostring(validate_marc(record_etree)) == record
+
+def test_bib_to_dc():
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    record = open(str(Path(__file__).parent / "data/example_dc.xml"), "rb").read()
+    assert bib_to_dc(bib_record) == record
+    
+def test_marc_xml_to_dc_xml():
+    marc_record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()
+    record = open(str(Path(__file__).parent / "data/example_dc.xml"), "rb").read()
+    assert etree.tostring(marc_xml_to_dc_xml(etree.fromstring(marc_record))) == record
     
 
     
