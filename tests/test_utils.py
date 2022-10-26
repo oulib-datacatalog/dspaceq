@@ -24,7 +24,6 @@ from requests import codes, ConnectionError, ConnectTimeout
 from dspaceq.tasks.utils import get_mmsid, get_bags, get_requested_mmsids, \
     get_requested_etds, get_bib_record, check_missing, missing_fields, get_digitized_bags, get_alma_url_field,\
     get_marc_from_bib, update_ingest_status, list_s3_files, chunk_list, guess_collection, marc_xml_to_dc_xml, validate_marc
-    
         
 
 from bson.objectid import ObjectId
@@ -205,7 +204,7 @@ def test_get_bib_record_connection_issues(mock_requests_get):
 @pytest.mark.parametrize("number", range(5))
 def test_check_missing_with_missing_metadata(mock_utils_get_bib_record, number):
     mock_utils_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
-    assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')])]
+    assert check_missing("99263190402042") == [('99263190402042', [ensure_text('502a: Thesis/Diss Tag'), ensure_text('690: School')])]
 
 def test_missing_fields():
     """
@@ -220,8 +219,24 @@ def test_missing_fields():
     }
     assert list(missing_fields(bib_record)) == list(bib_record.values())
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
-    assert missing_fields(bib_record) == [ensure_text('502: Thesis/Diss Tag'), ensure_text('690: School')]
-    
+    assert missing_fields(bib_record) == [ensure_text('502a: Thesis/Diss Tag'), ensure_text('690: School')]
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_url_field.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('502a: Thesis/Diss Tag')]
+    bib_record = open(str(Path(__file__).parent / "data/example_bib_record_with_502_sub_a.xml"), "rb").read()
+    assert missing_fields(bib_record) == []
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_author.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('100: Author')]
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_publish_year.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('260/264: Publish Year')]
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_school.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('690: School')]
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_subject.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('600/610/611/630/650/651: Subject Heading')]
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_thesis_dissertation.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('502a: Thesis/Diss Tag')]
+    bib_record = open(str(Path(__file__).parent / "data/missing_fields/example_title.xml"), "rb").read()
+    assert missing_fields(bib_record) == [ensure_text('245: Title')]
+
 def test_get_bib_record(mock_requests_get):
     mock_requests_get.return_value = Mock(status_code=200, content="testing ascii")
     assert get_bib_record('123') == 'testing ascii'
@@ -280,3 +295,5 @@ def test_guess_collection():
 def test_validate_marc():
     bib_record = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     record = open(str(Path(__file__).parent / "data/example_marc.xml"), "rb").read()
+
+
