@@ -1,0 +1,10 @@
+Non-Newtonian fluids are very common during drilling, fracture operations and enhanced oil recovery processes. When a reservoir contains a non-Newtonian fluid such as those injected during polymer flood or the production of heavy oil, well test data cannot be interpreted using Newtonian fluid flow models. 
+The resulting analysis would be erroneous because non-Newtonian fluids behave rather differently.
+
+These results suggest the need for a thorough study of the behavior of non-Newtonian fluids in the reservoir and also a new look at the flow of those fluids in porous media.
+
+This study presents an interpretation technique for pressure behavior of non-Newtonian fluid flow in a homogeneous reservoir without type-curve Matching. The inclusion of a no-flow and/or a constant pressure line is also investigated.
+
+First, the TSD (Tiab's Direct Synthesis) technique was applied for analyzing the pressure behavior of a well located in (1) an infinite reservoir and, (2) near a linear boundary where wellbore storage and skin effects were considered. The analysis required the generation of type-curve sets for different wellbore storage and skin values.
+
+A step-by-step procedure is presented for the calculation of the reservoir parameters: the permeability/viscosity ratio, wellbore storage coefficient, skin factor and the distance to the nearest boundary without the use of type-curve Matching. The procedure is illustrated by a numerical example.
