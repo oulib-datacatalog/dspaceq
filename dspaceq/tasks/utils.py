@@ -134,7 +134,7 @@ def missing_fields(bib_record):
         ("245: Title", "record/datafield[@tag=245]"),
         ("100: Author", "record/datafield[@tag=100]"),
         ("260/264: Publish Year", "record/datafield[@tag=264]|record/datafield[@tag=260]"),
-        ("502: Thesis/Diss Tag", "record/datafield[@tag=502]"),
+        ("502a: Thesis/Diss Tag", "record/datafield[@tag=502]/subfield[@code='a']"),
         ("690: School", "record/datafield[@tag=690]"),
         ("600/610/611/630/650/651: Subject Heading", "record/datafield[@tag=600]|record/datafield[@tag=610]|record/datafield[@tag=611]|record/datafield[@tag=630]|record/datafield[@tag=650]|record/datafield[@tag=651]")
     ])
