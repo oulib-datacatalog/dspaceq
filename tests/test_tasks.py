@@ -87,3 +87,9 @@ def test_notify_dspace_etd_loaded():
     
     arg = {'success': {'bagname': 'url'}}
     #assert notify_dspace_etd_loaded(arg) == "Ingest notification sent"
+
+def test_ingest_thesis_dissertation_mock_s3(s3_resource, mock_list_s3_files, mock_get_mmsid, mock_check_missing, mock_get_bib_record, mock_celery_signature, mock_celery_group):
+    mock_check_missing.return_value = [("1234567890123", [])]
+    # TODO: Add committee.txt and abstract.txt using moto3
+    # TODO: Make sure that list_s3_files lists these files
+    assert ingest_thesis_dissertation("Smith_1819_12345678890123") == {'Kicked off ingest': ['Smith_1819_12345678890123'], 'failed': {}}

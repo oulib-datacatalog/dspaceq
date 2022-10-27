@@ -3,6 +3,8 @@ from moto import mock_s3
 import os
 import boto3
 
+from pathlib import Path
+
 @pytest.fixture
 def aws_credentials():
     """Mocked AWS Credentials for moto."""
@@ -16,6 +18,11 @@ def aws_credentials():
 def s3_client(aws_credentials):
     with mock_s3():
         yield boto3.client('s3', region_name='us-east-1')
+
+@pytest.fixture
+def s3_resource(aws_credentials):
+    with mock_s3():
+        yield boto3.resource('s3', region_name='us-east-1')
 
 @pytest.fixture
 def default_environ():
@@ -86,7 +93,14 @@ def mock_bib_metadata(mocker):
         mocker.patch('dspaceq.tasks.tasks.validate_marc'),
         mocker.patch('dspaceq.tasks.tasks.marc_xml_to_dc_xml'))
     mocker.stopall()
-    
+
+@pytest.fixture()
+def mock_get_bib_record(mocker):
+    mock_get_bib_record = mocker.patch('dspaceq.tasks.tasks.get_bib_record')
+    mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    yield mock_get_bib_record
+    mocker.stopall()
+
 @pytest.fixture()
 def mock_guess_collection(mocker):
     yield mocker.patch('dspaceq.tasks.tasks.guess_collection')
