@@ -276,8 +276,7 @@ def test_list_s3_files(s3_test_bucket):
     bucket = os.getenv('DEFAULT_BUCKET')
     bag = 'testbag'
     s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/image.txt'.format(bag), Body='test1')
-    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/image.pdf'.format(bag), Body='test1')
-
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/image.pdf'.format(bag), Body='test2')
     assert sorted(list_s3_files(bag)) == ['private/shareok/testbag/data/image.pdf', 'private/shareok/testbag/data/image.txt']
     
 def test_chunk_list():

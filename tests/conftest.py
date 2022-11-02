@@ -3,9 +3,9 @@ from moto import mock_s3
 import os
 import boto3
 
-from pathlib import Path
+#from pathlib import Path
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def aws_credentials():
     """Mocked AWS Credentials for moto."""
     os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
@@ -14,25 +14,33 @@ def aws_credentials():
     os.environ['AWS_SESSION_TOKEN'] = 'testing'
     os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def s3_client(aws_credentials):
     with mock_s3():
         yield boto3.client('s3', region_name='us-east-1')
-
-@pytest.fixture
+        
+@pytest.fixture(scope="function")
 def s3_resource(aws_credentials):
     with mock_s3():
-        yield boto3.resource('s3', region_name='us-east-1')
-
-@pytest.fixture
+        s3_resource = boto3.resource('s3', region_name='us-east-1')
+        yield s3_resource
+        
+@pytest.fixture(scope="function")
+def s3_resource_bucket(s3_resource, default_environ):
+    bucket = os.environ['DEFAULT_BUCKET']
+    s3_resource.create_bucket(Bucket=bucket)
+    yield s3_resource
+    
+@pytest.fixture(scope="function")
 def default_environ():
     os.environ['DEFAULT_BUCKET'] = 'test-bucket' 
            
-@pytest.fixture
+@pytest.fixture(scope="function")
 def s3_test_bucket(s3_client, default_environ):
     bucket = os.environ['DEFAULT_BUCKET']
     s3_client.create_bucket(Bucket=bucket)
     yield s3_client
+
 
 '------------------------------------fixture of tasks-----------------------------------------' 
 @pytest.fixture()
@@ -97,7 +105,6 @@ def mock_bib_metadata(mocker):
 @pytest.fixture()
 def mock_get_bib_record(mocker):
     mock_get_bib_record = mocker.patch('dspaceq.tasks.tasks.get_bib_record')
-    mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
     yield mock_get_bib_record
     mocker.stopall()
 
