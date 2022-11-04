@@ -39,6 +39,8 @@ app = Celery()
 app.config_from_object(celeryconfig)
 
 s3_bucket = 'ul-bagit'
+#s3_bucket=os.getenv('DEFAULT_BUCKET','ul-bagit')
+
 
 #Example task
 @app.task()
@@ -67,6 +69,7 @@ def dspace_ingest(bag_details, collection, notify_email="libir@ou.edu"):
     results = []
     
     s3 = boto3.resource("s3")
+    s3_bucket=os.getenv('DEFAULT_BUCKET','ul-bagit')
 
     if type(bag_details) != list:
         bag_details = [bag_details]
@@ -137,6 +140,8 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
         return "No items found ready for ingest"
 
     s3 = boto3.resource("s3")
+    s3_bucket=os.getenv('DEFAULT_BUCKET','ul-bagit')
+
 
     collections = defaultdict(list)
 
@@ -163,14 +168,12 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
 
         dc_xml_element = marc_xml_to_dc_xml(namespaced_marc_xml).getroot()
         logging.debug(dc_xml_element)
-
         # Remove duplicate "date created" fields
         results = dc_xml_element.xpath("//dublin_core/dcvalue[@element='date' and @qualifier='created']")
         for result in results[1:]:
             dc_xml_element.remove(result)
-
         new_file_list = []
-        error_in_file = False
+        error_in_file = False 
         for file in files:
             if 'committee.txt' in file.lower():
                 obj = s3.Object(s3_bucket, file)
@@ -189,7 +192,6 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                             break
                     if error_in_file:
                         break  # break out of file handling loop
-
             elif 'abstract.txt' in file.lower():
             # If abstract.txt is present, add contents to dc metadata
                 obj = s3.Object(s3_bucket, file)
@@ -204,16 +206,12 @@ def ingest_thesis_dissertation(bag="", collection="",): #dspace_endpoint=REST_EN
                         failed[bag] = "Incompatible character found in abstract.txt"
                         error_in_file = True
                         break
-
             else:
                 new_file_list.append(file)
-                
         if error_in_file:
             continue  # skip to next bag
-
         dc = etree.tostring(dc_xml_element)
         files = new_file_list
-
         if collection == "":
             if type(bib_record) is not dict: #If this is a dictionary, we failed to get a valid bib_record
                 collections[guess_collection(bib_record)].append({bag: {"files": files, "metadata": dc}})

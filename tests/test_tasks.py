@@ -88,8 +88,26 @@ def test_notify_dspace_etd_loaded():
     arg = {'success': {'bagname': 'url'}}
     #assert notify_dspace_etd_loaded(arg) == "Ingest notification sent"
 
-def test_ingest_thesis_dissertation_mock_s3(s3_resource, mock_list_s3_files, mock_get_mmsid, mock_check_missing, mock_get_bib_record, mock_celery_signature, mock_celery_group):
+def test_ingest_thesis_dissertation_mock_s3(s3_resource, mock_get_mmsid, mock_check_missing, mock_get_bib_record, mock_celery_signature, mock_celery_group, s3_test_bucket):
+    bucket = os.environ['DEFAULT_BUCKET']
+    bag_name = "Smith_1819_12345678890123"
+
     mock_check_missing.return_value = [("1234567890123", [])]
-    # TODO: Add committee.txt and abstract.txt using moto3
-    # TODO: Make sure that list_s3_files lists these files
-    assert ingest_thesis_dissertation("Smith_1819_12345678890123") == {'Kicked off ingest': ['Smith_1819_12345678890123'], 'failed': {}}
+    mock_get_bib_record.return_value = open(str(Path(__file__).parent / "data/example_bib_record.xml"), "rb").read()
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/committee.txt'.format(bag_name), Body='John Smith')
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/abstract.txt'.format(bag_name), Body='test abstract')
+    
+    #Test with good bag setting
+    assert s3_resource.Object(bucket, 'private/shareok/{0}/data/committee.txt'.format(bag_name)).get()['Body'].read() == b'John Smith'
+    assert ingest_thesis_dissertation(bag_name) == {'Kicked off ingest': [bag_name], 'failed': {}}
+    
+    #Test with invalid control character in abstract
+    s3_test_bucket.put_object(Bucket=bucket, Key='private/shareok/{0}/data/abstract.txt'.format(bag_name), Body=open(str(Path(__file__).parent / "data/example_abstract_control_char.txt"), "rb").read())
+    assert ingest_thesis_dissertation(bag_name) == {'Kicked off ingest': [], 'failed': {bag_name: 'Incompatible character found in abstract.txt'}}
+    
+
+
+    
+    
+    
+    
