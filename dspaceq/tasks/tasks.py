@@ -4,7 +4,7 @@ from os.path import join, isfile
 from os import mkdir
 from subprocess import check_call, CalledProcessError, check_output, STDOUT
 
-from celery import signature, group, Celery
+from celery import signature, group, Celery, shared_task
 from inspect import cleandoc
 from collections import defaultdict
 from bson.objectid import ObjectId
@@ -41,7 +41,7 @@ app.config_from_object(celeryconfig)
 s3_bucket = 'ul-bagit'
 
 #Example task
-@app.task()
+@shared_task()
 def add(x, y):
     """ Example task that adds two numbers or strings
         args: x and y
